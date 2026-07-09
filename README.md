@@ -25,4 +25,4 @@ The acoustic model is intentionally educational: it uses a 2D Helmholtz-style fi
 
 ## Chainsaw recording
 
-The seventh experiment uses [“Chainsaw 10” by ezwa](https://commons.wikimedia.org/wiki/File:Chainsaw_10.ogg), released into the public domain. Run `python3 scripts/analyze-chainsaw.py` to regenerate the extracted waveform, spectrum, periodic cycle, and Fourier profile. The analysis script requires FFmpeg, NumPy, and SciPy.
+The seventh experiment uses a continuous 12-second excerpt from [“Chainsaw 12” by ezwa](https://commons.wikimedia.org/wiki/File:Chainsaw_12.ogg), released into the public domain. Run `python3 scripts/analyze-chainsaw.py` to regenerate the extracted waveform, spectrum, periodic cycle, and Fourier profile. The analysis script requires FFmpeg, NumPy, and SciPy.

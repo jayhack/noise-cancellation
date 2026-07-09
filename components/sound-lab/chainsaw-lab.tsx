@@ -9,6 +9,7 @@ import {
 	TriangleAlert,
 	Volume2,
 	VolumeX,
+	Waves,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import analysis from "@/lib/acoustics/chainsaw-analysis.json";
@@ -501,7 +502,7 @@ export function ChainsawLab({
 					/>
 					<div className="pointer-events-none absolute left-4 top-4 flex flex-wrap gap-2">
 						<span className="rounded-md border border-[#ffca85]/25 bg-[#15141b]/90 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-[#ffca85] backdrop-blur">
-							Real chainsaw · 12 harmonics
+							Continuous 12 s chainsaw excerpt
 						</span>
 						<span className="rounded-md border border-[#61ffca]/20 bg-[#15141b]/90 px-2.5 py-1.5 font-mono text-[10px] text-[#61ffca] backdrop-blur">
 							Periodic core {formatDb(shownPeriodicDb)}
@@ -519,18 +520,18 @@ export function ChainsawLab({
 								<AudioLines className="size-3.5" /> Recorded waveform
 							</p>
 							<p className="mt-1 text-xs text-white/40">
-								Original 9.8 s recording · extracted window 3.300–3.400 s
+								12.0 s continuous run · analyzed window {analysis.segment.startSeconds.toFixed(3)}–{analysis.segment.endSeconds.toFixed(3)} s
 							</p>
 						</div>
 						<audio
 							controls
 							preload="metadata"
-							src="/audio/chainsaw-10.ogg"
+							src="/audio/chainsaw-steady.ogg"
 							className="h-9 w-full max-w-[320px] opacity-80"
 						>
 							<track
 								kind="captions"
-								src="/audio/chainsaw-10.vtt"
+								src="/audio/chainsaw-steady.vtt"
 								srcLang="en"
 								label="Sound description"
 							/>
@@ -559,7 +560,7 @@ export function ChainsawLab({
 				<section className="overflow-hidden rounded-2xl border border-[#61ffca]/20 bg-[#1b1924]">
 					<div className="border-b border-white/8 p-5">
 						<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#61ffca]">
-							<Gauge className="size-3.5" /> Broadband result
+							<Gauge className="size-3.5" /> Harmonic-model result
 						</p>
 						<div className="mt-4 grid grid-cols-2 gap-3">
 							<div>
@@ -617,12 +618,21 @@ export function ChainsawLab({
 					</p>
 				</section>
 
+				<section className="rounded-2xl border border-[#f694ff]/18 bg-[#f694ff]/[0.035] p-5">
+					<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#f694ff]">
+						<Waves className="size-3.5" /> What broadband means
+					</p>
+					<p className="mt-3 text-xs leading-5 text-white/45">
+						A pure tone puts nearly all its energy at one frequency. This chainsaw spreads energy across a wide band—from the low engine rhythm through kilohertz blade and airflow noise. Every narrow frequency slice needs its own cancellation amplitude and phase.
+					</p>
+				</section>
+
 				<section className="rounded-2xl border border-white/10 bg-[#1b1924] p-5">
 					<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-white/45">
 						<ShieldCheck className="size-3.5" /> Recording provenance
 					</p>
 					<p className="mt-3 text-xs leading-5 text-white/40">
-						“Chainsaw 10” by ezwa · public domain · 44.1 kHz mono original.
+						“Chainsaw 12” by ezwa · public domain. This player uses seconds {analysis.source.originalStartSeconds.toFixed(1)}–{analysis.source.originalEndSeconds.toFixed(1)} of the 87.3 s original.
 					</p>
 					<a href={analysis.source.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-[#82e2ff] hover:underline">
 						Wikimedia Commons source <ExternalLink className="size-3" />

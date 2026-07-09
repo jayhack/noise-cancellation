@@ -1,0 +1,10 @@
+Chainsaw 12 — steady excerpt
+
+Author: ezwa
+Original source: https://commons.wikimedia.org/wiki/File:Chainsaw_12.ogg
+License: Public domain
+
+This project includes seconds 41.5 through 53.5 of the original 87.3-second
+recording. The excerpt was converted to mono Ogg Opus and given 50 ms fades at
+the boundaries. The source recording originated at PDSounds and was released
+into the public domain by its author.

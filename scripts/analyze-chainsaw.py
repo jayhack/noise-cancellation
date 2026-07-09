@@ -20,11 +20,11 @@ from scipy.io import wavfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "public" / "audio" / "chainsaw-10.ogg"
+SOURCE = ROOT / "public" / "audio" / "chainsaw-steady.ogg"
 OUTPUT = ROOT / "lib" / "acoustics" / "chainsaw-analysis.json"
 SAMPLE_RATE = 22_050
-SEGMENT_START = 3.3
-SEGMENT_END = 3.4
+SEGMENT_START = 4.8
+SEGMENT_END = 4.9
 
 
 def rounded(values: np.ndarray, digits: int = 5) -> list[float]:
@@ -146,10 +146,12 @@ def main() -> None:
 
 	result = {
 		"source": {
-			"title": "Chainsaw 10",
+			"title": "Chainsaw 12 — steady excerpt",
 			"author": "ezwa",
 			"license": "Public domain",
-			"url": "https://commons.wikimedia.org/wiki/File:Chainsaw_10.ogg",
+			"url": "https://commons.wikimedia.org/wiki/File:Chainsaw_12.ogg",
+			"originalStartSeconds": 41.5,
+			"originalEndSeconds": 53.5,
 			"durationSeconds": round(len(audio) / sample_rate, 3),
 			"sampleRate": sample_rate,
 		},
