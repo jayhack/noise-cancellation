@@ -1821,8 +1821,8 @@ export function WaveLab() {
 						<figure className="relative mb-5 overflow-hidden rounded-3xl border border-[#82e2ff]/15 bg-[#08090b]">
 							<div className="relative aspect-[16/9] min-h-[430px] overflow-hidden sm:min-h-0">
 								<Image
-									src="/images/sound-lab/speaker-node-hero.png"
-									alt="Isolated active-noise-control speaker pod mounted on its full-height galvanized pole fixture in a dark product studio"
+									src="/images/sound-lab/speaker-node-hero-v2.png"
+									alt="Spherical industrial active-noise-control speaker mounted on a rugged galvanized pole fixture in a dark product studio"
 									fill
 									priority={false}
 									sizes="(min-width: 1536px) 1500px, 100vw"
