@@ -14,8 +14,8 @@ function ringPoints(count: number, radius: number, offset = 0) {
 	return Array.from({ length: count }, (_, index) => {
 		const angle = (index / count) * Math.PI * 2 + offset;
 		return {
-			x: 400 + Math.cos(angle) * radius,
-			y: 400 + Math.sin(angle) * radius,
+			x: Math.round((400 + Math.cos(angle) * radius) * 1000) / 1000,
+			y: Math.round((400 + Math.sin(angle) * radius) * 1000) / 1000,
 		};
 	});
 }
