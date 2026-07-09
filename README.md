@@ -20,6 +20,8 @@ Open [http://localhost:3000](http://localhost:3000).
 5. Estimation of the environmental transfer matrix from a moving microphone probe.
 6. Re-optimization using the estimated transfer matrix.
 7. Multi-frequency cancellation of a public-domain chainsaw recording, including the uncancelled broadband residual.
+8. An evidence review that bounds a realistic café-use claim with lab, field, simulation, and negative results.
+9. A concept prototype around a construction site and the quieter café-table outcome it is meant to create.
 
 The acoustic model is intentionally educational: it uses a 2D Helmholtz-style field with direct paths, first-order reflections, simplified transmission, and corner diffraction. Its decibel readouts are relative changes, not calibrated real-world SPL measurements.
 
