@@ -24,6 +24,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { ChainsawLab } from "@/components/sound-lab/chainsaw-lab";
 import { ContinuousRingStory } from "@/components/sound-lab/continuous-ring-story";
 import { HEstimationLab } from "@/components/sound-lab/h-estimation-lab";
 import { MultiHumanLab } from "@/components/sound-lab/multi-human-lab";
@@ -627,6 +628,7 @@ export function WaveLab() {
 	const obstacleSectionRef = useRef<HTMLDivElement>(null);
 	const estimationSectionRef = useRef<HTMLDivElement>(null);
 	const recoverySectionRef = useRef<HTMLDivElement>(null);
+	const chainsawSectionRef = useRef<HTMLDivElement>(null);
 	const frameRef = useRef<number>(0);
 	const lastFrameRef = useRef(0);
 	const timeRef = useRef(0);
@@ -641,12 +643,14 @@ export function WaveLab() {
 	const obstacleActive = useSectionActive(obstacleSectionRef);
 	const estimationActive = useSectionActive(estimationSectionRef);
 	const recoveryActive = useSectionActive(recoverySectionRef);
+	const chainsawActive = useSectionActive(chainsawSectionRef);
 	const [running, setRunning] = useState(true);
 	const [storyResetKey, setStoryResetKey] = useState(0);
 	const [multiResetKey, setMultiResetKey] = useState(0);
 	const [obstacleResetKey, setObstacleResetKey] = useState(0);
 	const [estimationResetKey, setEstimationResetKey] = useState(0);
 	const [recoveryResetKey, setRecoveryResetKey] = useState(0);
+	const [chainsawResetKey, setChainsawResetKey] = useState(0);
 	const [autoTrack, setAutoTrack] = useState(true);
 	const [frequency, setFrequency] = useState(440);
 	const [delay, setDelay] = useState(0);
@@ -1149,7 +1153,7 @@ export function WaveLab() {
 								Active sound control lab
 							</h1>
 							<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-white/40">
-								Six experiments · scroll to compare
+								Seven experiments · scroll to compare
 							</p>
 						</div>
 					</div>
@@ -1163,6 +1167,7 @@ export function WaveLab() {
 								setObstacleResetKey((value) => value + 1);
 								setEstimationResetKey((value) => value + 1);
 								setRecoveryResetKey((value) => value + 1);
+								setChainsawResetKey((value) => value + 1);
 							}}
 							className="grid size-9 place-items-center rounded-lg border border-white/10 text-white/55 transition hover:border-white/20 hover:text-white"
 							aria-label="Reset simulation"
@@ -1182,7 +1187,7 @@ export function WaveLab() {
 			</header>
 
 			<nav className="sticky top-0 z-30 border-b border-white/10 bg-[#15141b]/92 px-4 py-2 backdrop-blur-xl sm:px-6" aria-label="Experiment sequence">
-				<div className="mx-auto grid max-w-[1500px] grid-cols-3 gap-1 sm:grid-cols-6">
+				<div className="mx-auto grid max-w-[1500px] grid-cols-4 gap-1 lg:grid-cols-7">
 					{[
 						["#experiment-1", "01", "Ideal shell"],
 						["#experiment-2", "02", "One person"],
@@ -1190,6 +1195,7 @@ export function WaveLab() {
 						["#experiment-4", "04", "Wrong H"],
 						["#experiment-5", "05", "Estimate H"],
 						["#experiment-6", "06", "Recover"],
+						["#experiment-7", "07", "Real audio"],
 					].map(([href, number, label]) => (
 						<a
 							key={href}
@@ -1578,6 +1584,17 @@ export function WaveLab() {
 					color="#61ffca"
 				/>
 				<ObstacleLab key={recoveryResetKey} running={running} active={recoveryActive} mode="estimated" />
+			</div>
+
+			<div id="experiment-7" ref={chainsawSectionRef} className="scroll-mt-14 border-b border-white/10">
+				<ExperimentHeading
+					number="7"
+					eyebrow="Measured waveform · broadband source"
+					title="Replace the sine wave with an actual chainsaw recording."
+					body="Extract the repeating engine cycle and its first twelve harmonics, optimize every frequency independently, then account for the non-periodic blade noise the harmonic model cannot cancel."
+					color="#ffca85"
+				/>
+				<ChainsawLab key={chainsawResetKey} running={running} active={chainsawActive} />
 			</div>
 
 			<section className="border-t border-white/10 px-5 py-16 sm:px-8 sm:py-20">

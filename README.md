@@ -19,5 +19,10 @@ Open [http://localhost:3000](http://localhost:3000).
 4. Failure when an open-field controller is used around reflective buildings.
 5. Estimation of the environmental transfer matrix from a moving microphone probe.
 6. Re-optimization using the estimated transfer matrix.
+7. Multi-frequency cancellation of a public-domain chainsaw recording, including the uncancelled broadband residual.
 
 The acoustic model is intentionally educational: it uses a 2D Helmholtz-style field with direct paths, first-order reflections, simplified transmission, and corner diffraction. Its decibel readouts are relative changes, not calibrated real-world SPL measurements.
+
+## Chainsaw recording
+
+The seventh experiment uses [“Chainsaw 10” by ezwa](https://commons.wikimedia.org/wiki/File:Chainsaw_10.ogg), released into the public domain. Run `python3 scripts/analyze-chainsaw.py` to regenerate the extracted waveform, spectrum, periodic cycle, and Fourier profile. The analysis script requires FFmpeg, NumPy, and SciPy.

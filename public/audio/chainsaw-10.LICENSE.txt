@@ -1,0 +1,9 @@
+Chainsaw 10
+
+Author: ezwa
+Source: https://commons.wikimedia.org/wiki/File:Chainsaw_10.ogg
+License: Public domain
+
+The recording originated at PDSounds and was released into the public domain
+by its author. The copy in this project is the original Wikimedia Commons Ogg
+Vorbis file (9.8 seconds, mono).
