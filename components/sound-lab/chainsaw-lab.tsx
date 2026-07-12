@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import analysis from "@/lib/acoustics/chainsaw-analysis.json";
+import {
+	pressureFieldColor,
+	WAVE_FIELD_BACKGROUND,
+} from "@/lib/acoustics/wave-palette";
 
 type Complex = { re: number; im: number };
 type Point = { x: number; y: number };
@@ -34,12 +38,9 @@ const SPEAKER_COUNT = 12;
 const VISUAL_TIME_SCALE = 0.035;
 
 const AURA = {
-	background: [21, 20, 27] as const,
-	purple: [162, 119, 255] as const,
-	green: [97, 255, 202] as const,
-	orange: "#ffca85",
-	blue: "#82e2ff",
-	red: "#ff6767",
+	orange: "#ffc247",
+	blue: "#168bd2",
+	red: "#ff3b24",
 };
 
 function cAdd(left: Complex, right: Complex): Complex {
@@ -332,8 +333,8 @@ function WaveformPlot() {
 			role="img"
 			aria-label="Amplitude envelope of the extracted chainsaw recording"
 		>
-			<line x1="0" y1={center} x2={width} y2={center} stroke="rgba(237,236,238,.12)" />
-			<polygon points={`${top} ${bottom}`} fill="rgba(255,202,133,.18)" stroke="#ffca85" strokeWidth="1.4" />
+			<line x1="0" y1={center} x2={width} y2={center} stroke="rgba(242,238,228,.12)" />
+			<polygon points={`${top} ${bottom}`} fill="rgba(255,194,71,.18)" stroke="#ffc247" strokeWidth="1.4" />
 		</svg>
 	);
 }
@@ -341,9 +342,11 @@ function WaveformPlot() {
 export function ChainsawLab({
 	running,
 	active,
+	showControls,
 }: {
 	running: boolean;
 	active: boolean;
+	showControls: boolean;
 }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const frameRef = useRef(0);
@@ -369,7 +372,7 @@ export function ChainsawLab({
 				y: transform.offsetY + point.y * transform.scale,
 			});
 
-			context.fillStyle = "#100f15";
+			context.fillStyle = WAVE_FIELD_BACKGROUND;
 			context.fillRect(0, 0, width, height);
 			const step = Math.max(9, Math.round(8 * dpr));
 			for (
@@ -405,15 +408,13 @@ export function ChainsawLab({
 					const signedStrength = Math.tanh(
 						(instantaneous / Math.max(amplitudeSum, 0.1)) * 1.8,
 					);
-					const mix = Math.abs(signedStrength) * 0.78;
-					const target = signedStrength >= 0 ? AURA.purple : AURA.green;
-					context.fillStyle = `rgb(${Math.round(AURA.background[0] + (target[0] - AURA.background[0]) * mix)} ${Math.round(AURA.background[1] + (target[1] - AURA.background[1]) * mix)} ${Math.round(AURA.background[2] + (target[2] - AURA.background[2]) * mix)})`;
+					context.fillStyle = pressureFieldColor(signedStrength, 0.78);
 					context.fillRect(pixelX, pixelY, step + 1, step + 1);
 				}
 			}
 
 			context.lineWidth = dpr;
-			context.strokeStyle = "rgba(237,236,238,.08)";
+			context.strokeStyle = "rgba(242,238,228,.08)";
 			for (let x = 0; x <= WORLD.width; x += 1) {
 				const start = toCanvas({ x, y: 0 });
 				const end = toCanvas({ x, y: WORLD.height });
@@ -433,8 +434,8 @@ export function ChainsawLab({
 
 			for (const speaker of SPEAKERS) {
 				const point = toCanvas(speaker);
-				context.fillStyle = "#15141b";
-				context.strokeStyle = controlEnabled ? "#a277ff" : "rgba(162,119,255,.38)";
+				context.fillStyle = "#0b0e12";
+				context.strokeStyle = controlEnabled ? "#2f6df6" : "rgba(47,109,246,.38)";
 				context.lineWidth = 2 * dpr;
 				context.beginPath();
 				context.arc(point.x, point.y, 8 * dpr, 0, Math.PI * 2);
@@ -447,21 +448,21 @@ export function ChainsawLab({
 			context.beginPath();
 			context.arc(source.x, source.y, 8 * dpr, 0, Math.PI * 2);
 			context.fill();
-			context.strokeStyle = "rgba(255,202,133,.35)";
+			context.strokeStyle = "rgba(255,194,71,.35)";
 			context.lineWidth = 9 * dpr;
 			context.stroke();
 
 			const human = toCanvas(HUMAN);
 			context.fillStyle = controlEnabled
-				? "rgba(97,255,202,.06)"
-				: "rgba(255,103,103,.04)";
-			context.strokeStyle = controlEnabled ? "#61ffca" : AURA.red;
+				? "rgba(59,185,232,.06)"
+				: "rgba(255,59,36,.04)";
+			context.strokeStyle = controlEnabled ? "#3bb9e8" : AURA.red;
 			context.lineWidth = 2 * dpr;
 			context.beginPath();
 			context.arc(human.x, human.y, BUBBLE_RADIUS * transform.scale, 0, Math.PI * 2);
 			context.fill();
 			context.stroke();
-			context.fillStyle = "#15141b";
+			context.fillStyle = "#0b0e12";
 			context.beginPath();
 			context.arc(human.x, human.y, 11 * dpr, 0, Math.PI * 2);
 			context.fill();
@@ -490,9 +491,9 @@ export function ChainsawLab({
 	const shownFullDb = controlEnabled ? FULL_SIGNAL_REDUCTION_DB : 0;
 
 	return (
-		<section className="mx-auto grid max-w-[1500px] gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+		<section className={`mx-auto grid max-w-[1500px] gap-4 p-4 sm:p-6 ${showControls ? "lg:grid-cols-[minmax(0,1fr)_340px]" : ""}`}>
 			<div className="space-y-4">
-				<div className="relative aspect-[3/2] min-h-[420px] max-h-[720px] overflow-hidden rounded-2xl border border-[#ffca85]/20 bg-[#100f15] shadow-2xl shadow-black/30">
+				<div className="relative aspect-[3/2] min-h-[420px] max-h-[720px] overflow-hidden rounded-2xl border border-[#ffc247]/20 bg-[#070a0d] shadow-2xl shadow-black/30">
 					<canvas
 						ref={canvasRef}
 						data-testid="chainsaw-canvas"
@@ -501,22 +502,22 @@ export function ChainsawLab({
 						aria-label="Multi-frequency chainsaw cancellation field around one listener"
 					/>
 					<div className="pointer-events-none absolute left-4 top-4 flex flex-wrap gap-2">
-						<span className="rounded-md border border-[#ffca85]/25 bg-[#15141b]/90 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-[#ffca85] backdrop-blur">
+						<span className="rounded-md border border-[#ffc247]/25 bg-[#0b0e12]/90 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-[#ffc247] backdrop-blur">
 							Continuous 12 s chainsaw excerpt
 						</span>
-						<span className="rounded-md border border-[#61ffca]/20 bg-[#15141b]/90 px-2.5 py-1.5 font-mono text-[10px] text-[#61ffca] backdrop-blur">
+						<span className="rounded-md border border-[#3bb9e8]/20 bg-[#0b0e12]/90 px-2.5 py-1.5 font-mono text-[10px] text-[#3bb9e8] backdrop-blur">
 							Periodic core {formatDb(shownPeriodicDb)}
 						</span>
 					</div>
-					<div className="pointer-events-none absolute bottom-4 right-4 rounded-md border border-white/10 bg-[#15141b]/90 px-2.5 py-2 font-mono text-[9px] uppercase tracking-wider text-white/40 backdrop-blur">
+					<div className="pointer-events-none absolute bottom-4 right-4 rounded-md border border-white/10 bg-[#0b0e12]/90 px-2.5 py-2 font-mono text-[9px] uppercase tracking-wider text-white/40 backdrop-blur">
 						wave motion slowed ×29
 					</div>
 				</div>
 
-				<div className="rounded-2xl border border-white/10 bg-[#1b1924] p-5">
+				<div className="rounded-2xl border border-white/10 bg-[#111820] p-5">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#ffca85]">
+							<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#ffc247]">
 								<AudioLines className="size-3.5" /> Recorded waveform
 							</p>
 							<p className="mt-1 text-xs text-white/40">
@@ -537,14 +538,14 @@ export function ChainsawLab({
 							/>
 						</audio>
 					</div>
-					<div className="mt-4 overflow-hidden rounded-xl border border-white/8 bg-[#100f15] px-3">
+					<div className="mt-4 overflow-hidden rounded-xl border border-white/8 bg-[#070a0d] px-3">
 						<WaveformPlot />
 					</div>
 					<div className="mt-4 flex h-16 items-end gap-px" aria-label="Frequency spectrum of extracted chainsaw window">
 						{analysis.spectrum.map((bin) => (
 							<span
-								key={bin.frequency}
-								className="min-w-0 flex-1 rounded-t-sm bg-[#82e2ff]/55"
+								key={`spectrum-${bin.frequency}`}
+								className="min-w-0 flex-1 rounded-t-sm bg-[#168bd2]/55"
 								style={{ height: `${Math.max(4, 64 + bin.relativeDb)}px` }}
 								title={`${Math.round(bin.frequency)} Hz · ${bin.relativeDb.toFixed(1)} dB`}
 							/>
@@ -556,20 +557,20 @@ export function ChainsawLab({
 				</div>
 			</div>
 
-			<aside className="space-y-4">
-				<section className="overflow-hidden rounded-2xl border border-[#61ffca]/20 bg-[#1b1924]">
+			{showControls ? <aside className="space-y-4">
+				<section className="overflow-hidden rounded-2xl border border-[#3bb9e8]/20 bg-[#111820]">
 					<div className="border-b border-white/8 p-5">
-						<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#61ffca]">
+						<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#3bb9e8]">
 							<Gauge className="size-3.5" /> Harmonic-model result
 						</p>
 						<div className="mt-4 grid grid-cols-2 gap-3">
 							<div>
 								<p className="text-[10px] uppercase tracking-wider text-white/35">Periodic core</p>
-								<p className="mt-1 font-mono text-2xl font-semibold text-[#61ffca]">{formatDb(shownPeriodicDb)}</p>
+								<p className="mt-1 font-mono text-2xl font-semibold text-[#3bb9e8]">{formatDb(shownPeriodicDb)}</p>
 							</div>
 							<div>
 								<p className="text-[10px] uppercase tracking-wider text-white/35">Whole signal</p>
-								<p className="mt-1 font-mono text-2xl font-semibold text-[#ffca85]">{formatDb(shownFullDb)}</p>
+								<p className="mt-1 font-mono text-2xl font-semibold text-[#ffc247]">{formatDb(shownFullDb)}</p>
 							</div>
 						</div>
 					</div>
@@ -579,7 +580,7 @@ export function ChainsawLab({
 							onClick={() => setControlEnabled((enabled) => !enabled)}
 							className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2.5 text-xs text-white/65 transition hover:border-white/20 hover:text-white"
 						>
-							{controlEnabled ? <VolumeX className="size-4 text-[#61ffca]" /> : <Volume2 className="size-4" />}
+							{controlEnabled ? <VolumeX className="size-4 text-[#3bb9e8]" /> : <Volume2 className="size-4" />}
 							{controlEnabled ? "Disable speaker array" : "Enable speaker array"}
 						</button>
 						<p className="mt-3 text-xs leading-5 text-white/40">
@@ -588,29 +589,29 @@ export function ChainsawLab({
 					</div>
 				</section>
 
-				<section className="rounded-2xl border border-[#82e2ff]/18 bg-[#1b1924] p-5">
-					<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#82e2ff]">
+				<section className="rounded-2xl border border-[#168bd2]/18 bg-[#111820] p-5">
+					<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#168bd2]">
 						<Radio className="size-3.5" /> Extracted periodic core
 					</p>
 					<div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
-						<div><p className="text-white/30">Fundamental</p><p className="mt-1 font-mono text-[#82e2ff]">{analysis.segment.fundamentalHz.toFixed(1)} Hz</p></div>
-						<div><p className="text-white/30">Cycle length</p><p className="mt-1 font-mono text-[#82e2ff]">{analysis.segment.periodMilliseconds.toFixed(2)} ms</p></div>
-						<div><p className="text-white/30">Repeat score</p><p className="mt-1 font-mono text-[#82e2ff]">{analysis.segment.autocorrelation.toFixed(3)}</p></div>
-						<div><p className="text-white/30">Phase-locked energy</p><p className="mt-1 font-mono text-[#82e2ff]">{Math.round(PERIODIC_FRACTION * 100)}%</p></div>
+						<div><p className="text-white/30">Fundamental</p><p className="mt-1 font-mono text-[#168bd2]">{analysis.segment.fundamentalHz.toFixed(1)} Hz</p></div>
+						<div><p className="text-white/30">Cycle length</p><p className="mt-1 font-mono text-[#168bd2]">{analysis.segment.periodMilliseconds.toFixed(2)} ms</p></div>
+						<div><p className="text-white/30">Repeat score</p><p className="mt-1 font-mono text-[#168bd2]">{analysis.segment.autocorrelation.toFixed(3)}</p></div>
+						<div><p className="text-white/30">Phase-locked energy</p><p className="mt-1 font-mono text-[#168bd2]">{Math.round(PERIODIC_FRACTION * 100)}%</p></div>
 					</div>
 					<div className="mt-4 space-y-2">
 						{COMPONENTS.slice(0, 4).map((component) => (
-							<div key={component.order} className="grid grid-cols-[42px_1fr_58px] items-center gap-2 font-mono text-[10px]">
+							<div key={`harmonic-${component.order}`} className="grid grid-cols-[42px_1fr_58px] items-center gap-2 font-mono text-[10px]">
 								<span className="text-white/30">H{component.order}</span>
-								<div className="h-1.5 overflow-hidden rounded-full bg-white/6"><div className="h-full rounded-full bg-[#a277ff]" style={{ width: `${Math.max(3, component.powerShare * 100)}%` }} /></div>
+								<div className="h-1.5 overflow-hidden rounded-full bg-white/6"><div className="h-full rounded-full bg-[#2f6df6]" style={{ width: `${Math.max(3, component.powerShare * 100)}%` }} /></div>
 								<span className="text-right text-white/50">{Math.round(component.frequency)} Hz</span>
 							</div>
 						))}
 					</div>
 				</section>
 
-				<section className="rounded-2xl border border-[#ffca85]/18 bg-[#ffca85]/[0.035] p-5">
-					<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#ffca85]">
+				<section className="rounded-2xl border border-[#ffc247]/18 bg-[#ffc247]/[0.035] p-5">
+					<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#ffc247]">
 						<TriangleAlert className="size-3.5" /> The honest limitation
 					</p>
 					<p className="mt-3 text-xs leading-5 text-white/45">
@@ -618,8 +619,8 @@ export function ChainsawLab({
 					</p>
 				</section>
 
-				<section className="rounded-2xl border border-[#f694ff]/18 bg-[#f694ff]/[0.035] p-5">
-					<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#f694ff]">
+				<section className="rounded-2xl border border-[#ff6a2a]/18 bg-[#ff6a2a]/[0.035] p-5">
+					<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#ff6a2a]">
 						<Waves className="size-3.5" /> What broadband means
 					</p>
 					<p className="mt-3 text-xs leading-5 text-white/45">
@@ -627,18 +628,18 @@ export function ChainsawLab({
 					</p>
 				</section>
 
-				<section className="rounded-2xl border border-white/10 bg-[#1b1924] p-5">
+				<section className="rounded-2xl border border-white/10 bg-[#111820] p-5">
 					<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-white/45">
 						<ShieldCheck className="size-3.5" /> Recording provenance
 					</p>
 					<p className="mt-3 text-xs leading-5 text-white/40">
 						“Chainsaw 12” by ezwa · public domain. This player uses seconds {analysis.source.originalStartSeconds.toFixed(1)}–{analysis.source.originalEndSeconds.toFixed(1)} of the 87.3 s original.
 					</p>
-					<a href={analysis.source.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-[#82e2ff] hover:underline">
+					<a href={analysis.source.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-[#168bd2] hover:underline">
 						Wikimedia Commons source <ExternalLink className="size-3" />
 					</a>
 				</section>
-			</aside>
+			</aside> : null}
 		</section>
 	);
 }

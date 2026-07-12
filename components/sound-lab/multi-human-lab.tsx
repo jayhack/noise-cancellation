@@ -1,15 +1,6 @@
 "use client";
 
-import {
-	BrainCircuit,
-	Building2,
-	Cpu,
-	Gauge,
-	Orbit,
-	Radio,
-	TriangleAlert,
-	UsersRound,
-} from "lucide-react";
+import { Gauge, Orbit, Radio, UsersRound } from "lucide-react";
 import {
 	type PointerEvent as ReactPointerEvent,
 	useCallback,
@@ -18,6 +9,10 @@ import {
 	useRef,
 	useState,
 } from "react";
+import {
+	pressureFieldColor,
+	WAVE_FIELD_BACKGROUND,
+} from "@/lib/acoustics/wave-palette";
 
 type Complex = { re: number; im: number };
 type Point = { x: number; y: number };
@@ -43,18 +38,15 @@ const SOUND_SPEED = 343;
 const MAX_SPEAKER_STRENGTH = 4;
 
 const HUMAN_BASES: Human[] = [
-	{ id: 1, label: "A", color: "#61ffca", x: 8.1, y: 2.2 },
-	{ id: 2, label: "B", color: "#f694ff", x: 9.35, y: 4.05 },
-	{ id: 3, label: "C", color: "#82e2ff", x: 8.2, y: 5.9 },
+	{ id: 1, label: "A", color: "#3bb9e8", x: 8.1, y: 2.2 },
+	{ id: 2, label: "B", color: "#ff6a2a", x: 9.35, y: 4.05 },
+	{ id: 3, label: "C", color: "#168bd2", x: 8.2, y: 5.9 },
 ];
 
 const AURA = {
-	background: [21, 20, 27] as const,
-	purple: [162, 119, 255] as const,
-	green: [97, 255, 202] as const,
-	orange: "#ffca85",
-	blue: "#82e2ff",
-	red: "#ff6767",
+	orange: "#ffc247",
+	blue: "#168bd2",
+	red: "#ff3b24",
 };
 
 function cAdd(left: Complex, right: Complex): Complex {
@@ -346,9 +338,11 @@ function resetHumans() {
 export function MultiHumanLab({
 	running,
 	active,
+	showControls,
 }: {
 	running: boolean;
 	active: boolean;
+	showControls: boolean;
 }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const frameRef = useRef(0);
@@ -380,7 +374,6 @@ export function MultiHumanLab({
 		[humans, speakers, frequency, bubbleRadius],
 	);
 	const shownAggregateDb = controlEnabled ? controller.aggregateDb : 0;
-	const shownWorstPersonDb = controlEnabled ? controller.worstPersonDb : 0;
 	const shownBubbleDbs = controlEnabled
 		? controller.bubbleDbs
 		: controller.bubbleDbs.map(() => 0);
@@ -437,7 +430,7 @@ export function MultiHumanLab({
 				y: transform.offsetY + point.y * transform.scale,
 			});
 
-			context.fillStyle = "#100f15";
+			context.fillStyle = WAVE_FIELD_BACKGROUND;
 			context.fillRect(0, 0, width, height);
 			const step = Math.max(7, Math.round(6 * dpr));
 			const phase = timeRef.current * Math.PI * 1.35;
@@ -462,15 +455,13 @@ export function MultiHumanLab({
 						: green(SOURCE, point, controller.waveNumber);
 					const instantaneous = phasor.re * cosTime - phasor.im * sinTime;
 					const signedStrength = Math.tanh(instantaneous * 0.72);
-					const mix = Math.abs(signedStrength) * 0.76;
-					const targetColor = signedStrength >= 0 ? AURA.purple : AURA.green;
-					context.fillStyle = `rgb(${Math.round(AURA.background[0] + (targetColor[0] - AURA.background[0]) * mix)} ${Math.round(AURA.background[1] + (targetColor[1] - AURA.background[1]) * mix)} ${Math.round(AURA.background[2] + (targetColor[2] - AURA.background[2]) * mix)})`;
+					context.fillStyle = pressureFieldColor(signedStrength, 0.76);
 					context.fillRect(pixelX, pixelY, step + 1, step + 1);
 				}
 			}
 
 			context.lineWidth = dpr;
-			context.strokeStyle = "rgba(237,236,238,.09)";
+			context.strokeStyle = "rgba(242,238,228,.09)";
 			for (let x = 0; x <= WORLD.width; x += 1) {
 				const start = toCanvas({ x, y: 0 });
 				const end = toCanvas({ x, y: WORLD.height });
@@ -491,7 +482,7 @@ export function MultiHumanLab({
 			for (let index = 0; index < sensors.length; index += 1) {
 				const sensor = toCanvas(sensors[index]);
 				const speaker = toCanvas(speakers[index]);
-				context.strokeStyle = "rgba(130,226,255,.16)";
+				context.strokeStyle = "rgba(22,139,210,.16)";
 				context.beginPath();
 				context.moveTo(sensor.x, sensor.y);
 				context.lineTo(speaker.x, speaker.y);
@@ -499,7 +490,7 @@ export function MultiHumanLab({
 				context.save();
 				context.translate(sensor.x, sensor.y);
 				context.rotate(Math.PI / 4);
-				context.fillStyle = "#15141b";
+				context.fillStyle = "#0b0e12";
 				context.strokeStyle = AURA.blue;
 				context.lineWidth = 1.35 * dpr;
 				context.fillRect(-4 * dpr, -4 * dpr, 8 * dpr, 8 * dpr);
@@ -508,8 +499,8 @@ export function MultiHumanLab({
 			}
 			for (const speaker of speakers) {
 				const point = toCanvas(speaker);
-				context.fillStyle = "#15141b";
-				context.strokeStyle = controlEnabled ? "#a277ff" : "rgba(162,119,255,.4)";
+				context.fillStyle = "#0b0e12";
+				context.strokeStyle = controlEnabled ? "#2f6df6" : "rgba(47,109,246,.4)";
 				context.lineWidth = 1.6 * dpr;
 				context.beginPath();
 				context.arc(point.x, point.y, 6.8 * dpr, 0, Math.PI * 2);
@@ -522,7 +513,7 @@ export function MultiHumanLab({
 			context.beginPath();
 			context.arc(source.x, source.y, 7 * dpr, 0, Math.PI * 2);
 			context.fill();
-			context.strokeStyle = "rgba(255,202,133,.35)";
+			context.strokeStyle = "rgba(255,194,71,.35)";
 			context.lineWidth = 8 * dpr;
 			context.stroke();
 
@@ -546,7 +537,7 @@ export function MultiHumanLab({
 				context.moveTo(anchor.x + 10 * dpr, anchor.y);
 				context.lineTo(x - 4 * dpr, centerY);
 				context.stroke();
-				context.fillStyle = "rgba(16,15,21,.92)";
+				context.fillStyle = "rgba(7,10,13,.92)";
 				context.beginPath();
 				context.roundRect(x, centerY - boxHeight / 2, boxWidth, boxHeight, 7 * dpr);
 				context.fill();
@@ -568,7 +559,7 @@ export function MultiHumanLab({
 				context.fill();
 				context.stroke();
 				context.setLineDash([3 * dpr, 8 * dpr]);
-				context.strokeStyle = "rgba(255,103,103,.24)";
+				context.strokeStyle = "rgba(255,59,36,.24)";
 				context.beginPath();
 				context.arc(
 					point.x,
@@ -592,7 +583,7 @@ export function MultiHumanLab({
 					);
 					context.fill();
 				}
-				context.fillStyle = "#15141b";
+				context.fillStyle = "#0b0e12";
 				context.strokeStyle = human.color;
 				context.lineWidth = 2 * dpr;
 				context.beginPath();
@@ -683,10 +674,9 @@ export function MultiHumanLab({
 	};
 
 	return (
-		<>
-			<section className="mx-auto grid max-w-[1500px] gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+		<section className={`mx-auto grid max-w-[1500px] gap-4 p-4 sm:p-6 ${showControls ? "lg:grid-cols-[minmax(0,1fr)_340px]" : ""}`}>
 				<div className="space-y-3">
-					<div className="relative aspect-[3/2] min-h-[420px] max-h-[720px] overflow-hidden rounded-2xl border border-white/10 bg-[#100f15] shadow-2xl shadow-black/30">
+					<div className="relative aspect-[3/2] min-h-[420px] max-h-[720px] overflow-hidden rounded-2xl border border-white/10 bg-[#070a0d] shadow-2xl shadow-black/30">
 						<canvas
 							ref={canvasRef}
 							data-testid="multi-human-canvas"
@@ -699,17 +689,11 @@ export function MultiHumanLab({
 							aria-label="Pressure field optimized around three moving people"
 						/>
 						<div className="pointer-events-none absolute left-4 top-4 flex flex-wrap items-center gap-2">
-							<span className="rounded-md border border-white/10 bg-[#15141b]/88 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-white/50 backdrop-blur">
-								Shared controller
-							</span>
-							<span className="rounded-md border border-[#61ffca]/20 bg-[#15141b]/88 px-2.5 py-1.5 font-mono text-[10px] text-[#61ffca] backdrop-blur">
+							<span className="rounded-md border border-[#3bb9e8]/20 bg-[#0b0e12]/88 px-2.5 py-1.5 font-mono text-[10px] text-[#3bb9e8] backdrop-blur">
 								3-bubble avg {formatDb(shownAggregateDb)}
 							</span>
-							<span className="rounded-md border border-[#f694ff]/20 bg-[#15141b]/88 px-2.5 py-1.5 font-mono text-[10px] text-[#f694ff] backdrop-blur">
-								Worst person {formatDb(shownWorstPersonDb)}
-							</span>
 						</div>
-						<div className="pointer-events-none absolute bottom-4 right-4 hidden rounded-md border border-white/10 bg-[#15141b]/88 px-2.5 py-2 font-mono text-[9px] uppercase tracking-wider text-white/40 backdrop-blur sm:block">
+						<div className="pointer-events-none absolute bottom-4 right-4 hidden rounded-md border border-white/10 bg-[#0b0e12]/88 px-2.5 py-2 font-mono text-[9px] uppercase tracking-wider text-white/40 backdrop-blur sm:block">
 							{speakerCount} complex controls · 3 moving targets
 						</div>
 					</div>
@@ -718,18 +702,18 @@ export function MultiHumanLab({
 					</p>
 				</div>
 
-				<aside className="space-y-4">
-					<section className="overflow-hidden rounded-2xl border border-[#61ffca]/20 bg-[#1b1924]">
+				{showControls ? <aside className="space-y-4">
+					<section className="overflow-hidden rounded-2xl border border-[#3bb9e8]/20 bg-[#111820]">
 						<div className="flex items-start justify-between gap-4 p-5 pb-3">
 							<div>
-								<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.17em] text-[#61ffca]">
+								<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.17em] text-[#3bb9e8]">
 									<Gauge className="size-3.5" /> Three-person result
 								</p>
 								<p className="mt-2 text-xs leading-5 text-white/45">
 									Energy average across three {bubbleRadius.toFixed(2)} m bubbles.
 								</p>
 							</div>
-							<span className="font-mono text-xl font-semibold text-[#61ffca]">
+							<span className="font-mono text-xl font-semibold text-[#3bb9e8]">
 								{formatDb(shownAggregateDb)}
 							</span>
 						</div>
@@ -752,23 +736,23 @@ export function MultiHumanLab({
 						<div className="grid grid-cols-2 border-t border-white/8">
 							<div className="border-r border-white/8 px-5 py-3">
 								<p className="text-[9px] uppercase tracking-wider text-white/30">Guard max</p>
-								<p className="mt-1 font-mono text-xs text-[#ff6767]">
+								<p className="mt-1 font-mono text-xs text-[#ff3b24]">
 									{formatDb(controlEnabled ? controller.worstGuardDb : 0)}
 								</p>
 							</div>
 							<div className="px-5 py-3">
 								<p className="text-[9px] uppercase tracking-wider text-white/30">Speaker effort</p>
-								<p className="mt-1 font-mono text-xs text-[#a277ff]">
+								<p className="mt-1 font-mono text-xs text-[#2f6df6]">
 									{controller.speakerEffort.toFixed(2)}
 								</p>
 							</div>
 						</div>
 					</section>
 
-					<section className="rounded-2xl border border-white/10 bg-[#1b1924] p-5">
+					<section className="rounded-2xl border border-white/10 bg-[#111820] p-5">
 						<div className="flex items-center justify-between gap-4">
 							<div>
-								<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#a277ff]">
+								<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#2f6df6]">
 									Shared optimizer
 								</p>
 								<p className="mt-1 text-sm font-medium">One solution, three regions</p>
@@ -776,7 +760,7 @@ export function MultiHumanLab({
 							<button
 								type="button"
 								onClick={() => setControlEnabled((value) => !value)}
-								className={`relative h-6 w-11 rounded-full transition ${controlEnabled ? "bg-[#a277ff]" : "bg-white/15"}`}
+								className={`relative h-6 w-11 rounded-full transition ${controlEnabled ? "bg-[#2f6df6]" : "bg-white/15"}`}
 								aria-label="Toggle multi-human control speakers"
 								aria-pressed={controlEnabled}
 							>
@@ -789,7 +773,7 @@ export function MultiHumanLab({
 							onClick={() => setAutoTrack((value) => !value)}
 							className={`mt-5 flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-xs transition ${
 								autoTrack
-									? "border-[#61ffca]/25 bg-[#61ffca]/[0.055] text-[#61ffca]"
+									? "border-[#3bb9e8]/25 bg-[#3bb9e8]/[0.055] text-[#3bb9e8]"
 									: "border-white/10 text-white/45 hover:border-white/20"
 							}`}
 							aria-pressed={autoTrack}
@@ -802,7 +786,7 @@ export function MultiHumanLab({
 
 						<label className="mt-5 block text-xs text-white/55" htmlFor="multi-frequency">
 							<span className="flex items-center justify-between">
-								Frequency <output className="font-mono text-[#ffca85]">{frequency} Hz</output>
+								Frequency <output className="font-mono text-[#ffc247]">{frequency} Hz</output>
 							</span>
 							<input
 								id="multi-frequency"
@@ -812,13 +796,13 @@ export function MultiHumanLab({
 								step="20"
 								value={frequency}
 								onChange={(event) => setFrequency(Number(event.target.value))}
-								className="mt-3 w-full accent-[#a277ff]"
+								className="mt-3 w-full accent-[#2f6df6]"
 							/>
 						</label>
 
 						<label className="mt-5 block text-xs text-white/55" htmlFor="multi-bubble-radius">
 							<span className="flex items-center justify-between">
-								Bubble radius <output className="font-mono text-[#61ffca]">{bubbleRadius.toFixed(2)} m</output>
+								Bubble radius <output className="font-mono text-[#3bb9e8]">{bubbleRadius.toFixed(2)} m</output>
 							</span>
 							<input
 								id="multi-bubble-radius"
@@ -828,24 +812,24 @@ export function MultiHumanLab({
 								step="0.05"
 								value={bubbleRadius}
 								onChange={(event) => setBubbleRadius(Number(event.target.value))}
-								className="mt-3 w-full accent-[#61ffca]"
+								className="mt-3 w-full accent-[#3bb9e8]"
 							/>
 						</label>
 
 						<div className="mt-5">
 							<div className="flex items-center justify-between">
 								<span className="text-xs text-white/55">Speaker controls</span>
-								<Radio className="size-3.5 text-[#82e2ff]" />
+								<Radio className="size-3.5 text-[#168bd2]" />
 							</div>
 							<div className="mt-3 grid grid-cols-3 gap-2">
 								{[8, 16, 24].map((count) => (
 									<button
-										key={count}
+										key={`speaker-count-${count}`}
 										type="button"
 										onClick={() => setSpeakerCount(count)}
 										className={`rounded-lg border px-2 py-2 font-mono text-[11px] transition ${
 											speakerCount === count
-												? "border-[#82e2ff]/35 bg-[#82e2ff]/10 text-[#82e2ff]"
+												? "border-[#168bd2]/35 bg-[#168bd2]/10 text-[#168bd2]"
 												: "border-white/10 text-white/45 hover:border-white/20"
 										}`}
 									>
@@ -856,77 +840,23 @@ export function MultiHumanLab({
 						</div>
 					</section>
 
-					<section className="rounded-2xl border border-[#f694ff]/15 bg-[#f694ff]/[0.035] p-5">
-						<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.17em] text-[#f694ff]">
+					<section className="rounded-2xl border border-[#ff6a2a]/15 bg-[#ff6a2a]/[0.035] p-5">
+						<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.17em] text-[#ff6a2a]">
 							<UsersRound className="size-3.5" /> Generalizing to N
 						</p>
 						<p className="mt-3 text-xs leading-5 text-white/45">
 							Each new person adds a sampled quiet region, but not necessarily independent constraints. At low frequency the field has few spatial modes; at high frequency the required speaker count grows quickly.
 						</p>
 						<div className="mt-4 grid grid-cols-2 gap-2 font-mono text-[10px]">
-							<div className="rounded-lg border border-white/8 bg-[#15141b] p-2.5 text-white/45">
-								<span className="block text-[#82e2ff]">{speakerCount} complex</span> controls
+							<div className="rounded-lg border border-white/8 bg-[#0b0e12] p-2.5 text-white/45">
+								<span className="block text-[#168bd2]">{speakerCount} complex</span> controls
 							</div>
-							<div className="rounded-lg border border-white/8 bg-[#15141b] p-2.5 text-white/45">
-								<span className="block text-[#61ffca]">111 samples</span> across 3 bubbles
+							<div className="rounded-lg border border-white/8 bg-[#0b0e12] p-2.5 text-white/45">
+								<span className="block text-[#3bb9e8]">111 samples</span> across 3 bubbles
 							</div>
 						</div>
 					</section>
-				</aside>
+				</aside> : null}
 			</section>
-
-			<section className="border-t border-white/10 px-5 py-14 sm:px-8 sm:py-18">
-				<div className="mx-auto max-w-[1200px]">
-					<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#ffca85]">
-						<Building2 className="size-3.5" /> The next hard case · buildings and obstacles
-					</div>
-					<h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">
-						Obstacles change the transfer matrix—not the optimization problem.
-					</h2>
-					<p className="mt-4 max-w-4xl text-base leading-7 text-white/55">
-						Replace the free-field Green function with an environment-aware impulse response from every source and speaker to every protected point. Reflections and diffraction can be modeled deterministically, measured in place, or learned as a fast residual correction.
-					</p>
-					<div className="mt-7 grid gap-4 rounded-2xl border border-[#61ffca]/15 bg-[#61ffca]/[0.035] p-5 sm:p-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-						<div>
-							<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#61ffca]">
-								Deterministic verdict
-							</p>
-							<p className="mt-3 text-sm leading-6 text-white/55">
-								If the environment transfer matrix is accurate and acoustics remain linear, the optimal narrowband speaker weights are still a small convex solve. A neural network is not needed to find the optimum.
-							</p>
-						</div>
-						<div className="rounded-xl border border-white/8 bg-[#15141b] p-4 font-mono text-xs leading-7 text-white/60">
-							<span className="text-[#edecee]">p(f)</span> = d(f) + <span className="text-[#82e2ff]">H<sub>environment</sub>(f)</span>w(f)
-							<br />
-							<span className="text-[#61ffca]">w*</span> = arg min ‖p<sub>bubbles</sub>‖² + λ‖w‖²
-						</div>
-					</div>
-
-					<div className="mt-9 grid gap-4 md:grid-cols-3">
-						<div className="rounded-2xl border border-[#82e2ff]/15 bg-[#100f15] p-5 sm:p-6">
-							<Cpu className="size-5 text-[#82e2ff]" />
-							<h3 className="mt-4 text-base font-semibold">1 · Deterministic first</h3>
-							<p className="mt-3 text-sm leading-6 text-white/48">
-								Use a wave solver near the array and people, geometric acoustics for distant reflections, then solve the same regularized least-squares controller.
-							</p>
-						</div>
-						<div className="rounded-2xl border border-[#ff6767]/15 bg-[#100f15] p-5 sm:p-6">
-							<TriangleAlert className="size-5 text-[#ff6767]" />
-							<h3 className="mt-4 text-base font-semibold">2 · Calibration is the bottleneck</h3>
-							<p className="mt-3 text-sm leading-6 text-white/48">
-								Unknown wall impedance, open windows, wind, temperature gradients, and moving objects create more error than the optimizer itself.
-							</p>
-						</div>
-						<div className="rounded-2xl border border-[#f694ff]/15 bg-[#100f15] p-5 sm:p-6">
-							<BrainCircuit className="size-5 text-[#f694ff]" />
-							<h3 className="mt-4 text-base font-semibold">3 · Learn the residual</h3>
-							<p className="mt-3 text-sm leading-6 text-white/48">
-								A learned surrogate can accelerate repeated solves or correct model mismatch. It should predict transfer functions—not replace the safety-constrained optimizer.
-							</p>
-						</div>
-					</div>
-				</div>
-			</section>
-		</>
 	);
 }

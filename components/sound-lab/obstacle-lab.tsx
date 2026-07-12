@@ -1,15 +1,11 @@
 "use client";
 
-import {
-	AudioWaveform,
-	Camera,
-	Gauge,
-	RefreshCw,
-	ScanLine,
-	ShieldAlert,
-	Waves,
-} from "lucide-react";
+import { Gauge, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	pressureFieldColor,
+	WAVE_FIELD_BACKGROUND,
+} from "@/lib/acoustics/wave-palette";
 
 type Complex = { re: number; im: number };
 type Point = { x: number; y: number };
@@ -44,14 +40,44 @@ const OBSTACLES: Rect[] = [
 	{ x0: 6.65, x1: 7.8, y0: 5.05, y1: 6.2, label: "BUILDING B" },
 ];
 
+const PROBE_POINTS: Point[] = [
+	{ x: 8.25, y: 2.65 },
+	{ x: 9.05, y: 2.25 },
+	{ x: 9.75, y: 2.8 },
+	{ x: 9.9, y: 3.65 },
+];
+
+const SEQUENCE_STAGES = [
+	{
+		title: "Solve in an open field",
+		result: "−23.0 dB predicted",
+		body: "The naïve controller assumes every sound path is direct.",
+		color: "#168bd2",
+	},
+	{
+		title: "Add reflective obstacles",
+		result: "+4.2 dB actual",
+		body: "Buildings add delayed arrivals, so the old speaker phases now make the target louder.",
+		color: "#ff3b24",
+	},
+	{
+		title: "Measure the missing paths",
+		result: "4 probe readings",
+		body: "Sparse microphones anchor an environment-aware estimate of the transfer matrix H.",
+		color: "#ffc247",
+	},
+	{
+		title: "Re-solve with known H",
+		result: "−10.2 dB actual",
+		body: "The obstacles stay, but the corrected controller now phases the same array against the reflections.",
+		color: "#3bb9e8",
+	},
+] as const;
+
 const AURA = {
-	background: [21, 20, 27] as const,
-	purple: [162, 119, 255] as const,
-	green: [97, 255, 202] as const,
-	orange: "#ffca85",
-	blue: "#82e2ff",
-	red: "#ff6767",
-	pink: "#f694ff",
+	orange: "#ffc247",
+	blue: "#168bd2",
+	red: "#ff3b24",
 };
 
 function cAdd(left: Complex, right: Complex): Complex {
@@ -560,10 +586,12 @@ export function ObstacleLab({
 	running,
 	active,
 	mode,
+	showControls,
 }: {
 	running: boolean;
 	active: boolean;
-	mode: "open" | "estimated";
+	mode: "open" | "estimated" | "sequence";
+	showControls: boolean;
 }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const frameRef = useRef(0);
@@ -572,6 +600,16 @@ export function ObstacleLab({
 	const [frequency, setFrequency] = useState(240);
 	const [reflectionStrength, setReflectionStrength] = useState(1.2);
 	const [controlEnabled, setControlEnabled] = useState(true);
+	const [sequenceStage, setSequenceStage] = useState(0);
+	const sequenceMode = mode === "sequence";
+
+	useEffect(() => {
+		if (!sequenceMode || !active || !running) return;
+		const interval = window.setInterval(() => {
+			setSequenceStage((stage) => (stage + 1) % SEQUENCE_STAGES.length);
+		}, 3400);
+		return () => window.clearInterval(interval);
+	}, [active, running, sequenceMode]);
 	const speakers = useMemo(() => buildRing(SPEAKER_COUNT), []);
 	const sensors = useMemo(
 		() => buildRing(SPEAKER_COUNT, 1.55, Math.PI / SPEAKER_COUNT),
@@ -599,7 +637,10 @@ export function ObstacleLab({
 			}),
 		[frequency, reflectionStrength, speakers],
 	);
-	const controller = mode === "estimated" ? estimatedController : openController;
+	const estimatedMode = mode === "estimated" || (sequenceMode && sequenceStage === 3);
+	const worldHasObstacles = !sequenceMode || sequenceStage >= 1;
+	const measurementsVisible = sequenceMode && sequenceStage === 2;
+	const controller = estimatedMode ? estimatedController : openController;
 	const openActual = useMemo(
 		() =>
 			evaluateActualScene({
@@ -627,7 +668,9 @@ export function ObstacleLab({
 	const shownAttenuationLost = controlEnabled ? attenuationLost : 0;
 	const recoveredDb = Math.max(0, openActual.bubbleDb - actual.bubbleDb);
 	const shownRecoveredDb = controlEnabled ? recoveredDb : 0;
-	const estimatedMode = mode === "estimated";
+	const shownActualDb = worldHasObstacles
+		? actual.bubbleDb
+		: openController.predictedBubbleDb;
 
 	const draw = useCallback(
 		(timestamp: number) => {
@@ -647,15 +690,18 @@ export function ObstacleLab({
 				x: transform.offsetX + point.x * transform.scale,
 				y: transform.offsetY + point.y * transform.scale,
 			});
-			const propagator = (from: Point, to: Point) =>
-				environmentGreen(
-					from,
-					to,
-					controller.waveNumber,
-					reflectionStrength,
-				);
+			const propagator = worldHasObstacles
+				? (from: Point, to: Point) =>
+						environmentGreen(
+							from,
+							to,
+							controller.waveNumber,
+							reflectionStrength,
+						)
+				: (from: Point, to: Point) =>
+						openFieldGreen(from, to, controller.waveNumber);
 
-			context.fillStyle = "#100f15";
+			context.fillStyle = WAVE_FIELD_BACKGROUND;
 			context.fillRect(0, 0, width, height);
 			const step = Math.max(9, Math.round(8 * dpr));
 			const phase = timeRef.current * Math.PI * 1.35;
@@ -686,15 +732,13 @@ export function ObstacleLab({
 						: propagator(SOURCE, point);
 					const instantaneous = phasor.re * cosTime - phasor.im * sinTime;
 					const signedStrength = Math.tanh(instantaneous * 0.62);
-					const mix = Math.abs(signedStrength) * 0.76;
-					const targetColor = signedStrength >= 0 ? AURA.purple : AURA.green;
-					context.fillStyle = `rgb(${Math.round(AURA.background[0] + (targetColor[0] - AURA.background[0]) * mix)} ${Math.round(AURA.background[1] + (targetColor[1] - AURA.background[1]) * mix)} ${Math.round(AURA.background[2] + (targetColor[2] - AURA.background[2]) * mix)})`;
+					context.fillStyle = pressureFieldColor(signedStrength, 0.76);
 					context.fillRect(pixelX, pixelY, step + 1, step + 1);
 				}
 			}
 
 			context.lineWidth = dpr;
-			context.strokeStyle = "rgba(237,236,238,.08)";
+			context.strokeStyle = "rgba(242,238,228,.08)";
 			for (let x = 0; x <= WORLD.width; x += 1) {
 				const start = toCanvas({ x, y: 0 });
 				const end = toCanvas({ x, y: WORLD.height });
@@ -716,30 +760,32 @@ export function ObstacleLab({
 			const humanPoint = toCanvas(HUMAN);
 			context.save();
 			context.setLineDash([6 * dpr, 7 * dpr]);
-			context.strokeStyle = "rgba(255,202,133,.44)";
+			context.strokeStyle = "rgba(255,194,71,.44)";
 			context.lineWidth = 1.3 * dpr;
 			context.beginPath();
 			context.moveTo(sourcePoint.x, sourcePoint.y);
 			context.lineTo(humanPoint.x, humanPoint.y);
 			context.stroke();
-			for (const corner of [
-				{ x: OBSTACLES[0].x1, y: OBSTACLES[0].y1 },
-				{ x: OBSTACLES[1].x1, y: OBSTACLES[1].y0 },
-			]) {
-				const cornerPoint = toCanvas(corner);
-				context.strokeStyle = "rgba(130,226,255,.55)";
-				context.beginPath();
-				context.moveTo(sourcePoint.x, sourcePoint.y);
-				context.lineTo(cornerPoint.x, cornerPoint.y);
-				context.lineTo(humanPoint.x, humanPoint.y);
-				context.stroke();
+			if (worldHasObstacles) {
+				for (const corner of [
+					{ x: OBSTACLES[0].x1, y: OBSTACLES[0].y1 },
+					{ x: OBSTACLES[1].x1, y: OBSTACLES[1].y0 },
+				]) {
+					const cornerPoint = toCanvas(corner);
+					context.strokeStyle = "rgba(22,139,210,.55)";
+					context.beginPath();
+					context.moveTo(sourcePoint.x, sourcePoint.y);
+					context.lineTo(cornerPoint.x, cornerPoint.y);
+					context.lineTo(humanPoint.x, humanPoint.y);
+					context.stroke();
+				}
 			}
 			context.restore();
 
 			for (let index = 0; index < speakers.length; index += 1) {
 				const sensor = toCanvas(sensors[index]);
 				const speaker = toCanvas(speakers[index]);
-				context.strokeStyle = "rgba(130,226,255,.18)";
+				context.strokeStyle = "rgba(22,139,210,.18)";
 				context.beginPath();
 				context.moveTo(sensor.x, sensor.y);
 				context.lineTo(speaker.x, speaker.y);
@@ -747,14 +793,14 @@ export function ObstacleLab({
 				context.save();
 				context.translate(sensor.x, sensor.y);
 				context.rotate(Math.PI / 4);
-				context.fillStyle = "#15141b";
+				context.fillStyle = "#0b0e12";
 				context.strokeStyle = AURA.blue;
 				context.lineWidth = 1.5 * dpr;
 				context.fillRect(-4.5 * dpr, -4.5 * dpr, 9 * dpr, 9 * dpr);
 				context.strokeRect(-4.5 * dpr, -4.5 * dpr, 9 * dpr, 9 * dpr);
 				context.restore();
-				context.fillStyle = "#15141b";
-				context.strokeStyle = controlEnabled ? "#a277ff" : "rgba(162,119,255,.4)";
+				context.fillStyle = "#0b0e12";
+				context.strokeStyle = controlEnabled ? "#2f6df6" : "rgba(47,109,246,.4)";
 				context.lineWidth = 1.8 * dpr;
 				context.beginPath();
 				context.arc(speaker.x, speaker.y, 7.5 * dpr, 0, Math.PI * 2);
@@ -762,13 +808,13 @@ export function ObstacleLab({
 				context.stroke();
 			}
 
-			for (const rect of OBSTACLES) {
+			if (worldHasObstacles) for (const rect of OBSTACLES) {
 				const topLeft = toCanvas({ x: rect.x0, y: rect.y0 });
 				const bottomRight = toCanvas({ x: rect.x1, y: rect.y1 });
 				const rectWidth = bottomRight.x - topLeft.x;
 				const rectHeight = bottomRight.y - topLeft.y;
 				context.fillStyle = "rgba(18,24,34,.96)";
-				context.strokeStyle = "rgba(130,226,255,.62)";
+				context.strokeStyle = "rgba(22,139,210,.62)";
 				context.lineWidth = 2 * dpr;
 				context.fillRect(topLeft.x, topLeft.y, rectWidth, rectHeight);
 				context.strokeRect(topLeft.x, topLeft.y, rectWidth, rectHeight);
@@ -776,7 +822,7 @@ export function ObstacleLab({
 				context.beginPath();
 				context.rect(topLeft.x, topLeft.y, rectWidth, rectHeight);
 				context.clip();
-				context.strokeStyle = "rgba(130,226,255,.09)";
+				context.strokeStyle = "rgba(22,139,210,.09)";
 				for (
 					let offset = -rectHeight;
 					offset < rectWidth + rectHeight;
@@ -788,7 +834,7 @@ export function ObstacleLab({
 					context.stroke();
 				}
 				context.restore();
-				context.fillStyle = "rgba(130,226,255,.72)";
+				context.fillStyle = "rgba(22,139,210,.72)";
 				context.font = `600 ${9 * dpr}px ui-monospace, monospace`;
 				context.textAlign = "center";
 				context.fillText(
@@ -798,19 +844,57 @@ export function ObstacleLab({
 				);
 			}
 
+			if (measurementsVisible) {
+				context.save();
+				context.setLineDash([5 * dpr, 8 * dpr]);
+				context.strokeStyle = "rgba(59,185,232,.7)";
+				context.lineWidth = 1.5 * dpr;
+				context.beginPath();
+				PROBE_POINTS.forEach((probe, index) => {
+					const point = toCanvas(probe);
+					if (index === 0) context.moveTo(point.x, point.y);
+					else context.lineTo(point.x, point.y);
+				});
+				context.stroke();
+				context.setLineDash([]);
+				PROBE_POINTS.forEach((probe, index) => {
+					const point = toCanvas(probe);
+					const pulse = (10 + Math.sin(timeRef.current * 5 + index) * 2.5) * dpr;
+					context.fillStyle = "rgba(7,10,13,.92)";
+					context.strokeStyle = index % 2 === 0 ? "#ffc247" : "#3bb9e8";
+					context.lineWidth = 2 * dpr;
+					context.beginPath();
+					context.arc(point.x, point.y, pulse, 0, Math.PI * 2);
+					context.fill();
+					context.stroke();
+					context.fillStyle = context.strokeStyle;
+					context.font = `600 ${9 * dpr}px ui-monospace, monospace`;
+					context.textAlign = "center";
+					context.textBaseline = "middle";
+					context.fillText(String(index + 1), point.x, point.y + dpr);
+				});
+				context.restore();
+			}
+
 			context.textAlign = "start";
 			context.fillStyle = AURA.orange;
 			context.beginPath();
 			context.arc(sourcePoint.x, sourcePoint.y, 7 * dpr, 0, Math.PI * 2);
 			context.fill();
-			context.strokeStyle = "rgba(255,202,133,.35)";
+			context.strokeStyle = "rgba(255,194,71,.35)";
 			context.lineWidth = 8 * dpr;
 			context.stroke();
 
-			context.fillStyle = estimatedMode
-				? "rgba(97,255,202,.06)"
-				: "rgba(255,103,103,.06)";
-			context.strokeStyle = estimatedMode ? "#61ffca" : AURA.red;
+			context.fillStyle = !worldHasObstacles
+				? "rgba(22,139,210,.06)"
+				: estimatedMode
+					? "rgba(59,185,232,.06)"
+					: "rgba(255,59,36,.06)";
+			context.strokeStyle = !worldHasObstacles
+				? AURA.blue
+				: estimatedMode
+					? "#3bb9e8"
+					: AURA.red;
 			context.lineWidth = 1.8 * dpr;
 			context.beginPath();
 			context.arc(
@@ -822,7 +906,7 @@ export function ObstacleLab({
 			);
 			context.fill();
 			context.stroke();
-			context.fillStyle = "#15141b";
+			context.fillStyle = "#0b0e12";
 			context.lineWidth = 2 * dpr;
 			context.beginPath();
 			context.arc(humanPoint.x, humanPoint.y, 11 * dpr, 0, Math.PI * 2);
@@ -854,7 +938,7 @@ export function ObstacleLab({
 				context.moveTo(anchor.x + 10 * dpr, anchor.y);
 				context.lineTo(x - 4 * dpr, centerY);
 				context.stroke();
-				context.fillStyle = "rgba(16,15,21,.94)";
+				context.fillStyle = "rgba(7,10,13,.94)";
 				context.beginPath();
 				context.roundRect(x, centerY - boxHeight / 2, boxWidth, boxHeight, 7 * dpr);
 				context.fill();
@@ -867,22 +951,24 @@ export function ObstacleLab({
 			drawCallout(sourcePoint, "SOURCE", AURA.orange, 0);
 			drawCallout(
 				humanPoint,
-				`${estimatedMode ? "RECOVERED" : "ACTUAL"}  ${formatDb(controlEnabled ? actual.bubbleDb : 0)}`,
-				estimatedMode ? "#61ffca" : AURA.red,
+				`${!worldHasObstacles ? "OPEN FIELD" : estimatedMode ? "RECOVERED" : "ACTUAL"}  ${formatDb(controlEnabled ? shownActualDb : 0)}`,
+				!worldHasObstacles ? AURA.blue : estimatedMode ? "#3bb9e8" : AURA.red,
 				-46,
 			);
 			context.textBaseline = "alphabetic";
 		},
 		[
 			active,
-			actual.bubbleDb,
 			controlEnabled,
 			controller,
 			estimatedMode,
+			measurementsVisible,
 			reflectionStrength,
 			running,
 			sensors,
+			shownActualDb,
 			speakers,
+			worldHasObstacles,
 		],
 	);
 
@@ -896,75 +982,94 @@ export function ObstacleLab({
 		return () => cancelAnimationFrame(frameRef.current);
 	}, [active, draw]);
 
+	const activeSequenceStage = SEQUENCE_STAGES[sequenceStage];
+
 	return (
-		<>
-			<section className="mx-auto grid max-w-[1500px] gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+		<section className={`mx-auto grid max-w-[1500px] gap-4 p-4 sm:p-6 ${showControls ? "lg:grid-cols-[minmax(0,1fr)_340px]" : ""}`}>
 				<div className="space-y-3">
-					<div className={`relative aspect-[3/2] min-h-[420px] max-h-[720px] overflow-hidden rounded-2xl border bg-[#100f15] shadow-2xl shadow-black/30 ${estimatedMode ? "border-[#61ffca]/20" : "border-[#ff6767]/20"}`}>
+					<div
+						className={`relative aspect-[3/2] min-h-[420px] max-h-[720px] overflow-hidden rounded-2xl border bg-[#070a0d] shadow-2xl shadow-black/30 ${sequenceMode ? "" : estimatedMode ? "border-[#3bb9e8]/20" : "border-[#ff3b24]/20"}`}
+						style={sequenceMode ? { borderColor: `${activeSequenceStage.color}44` } : undefined}
+					>
 						<canvas
 							ref={canvasRef}
 							data-testid={`obstacle-canvas-${mode}`}
 							className="absolute inset-0 h-full w-full"
 							role="img"
-							aria-label={estimatedMode ? "Environment-aware sound controller recovering cancellation around two reflective buildings" : "Open-field sound controller failing around two reflective buildings"}
+							aria-label={sequenceMode ? "Animated sequence from naïve open-field control through obstacle measurement and corrected cancellation" : estimatedMode ? "Environment-aware sound controller recovering cancellation around two reflective buildings" : "Open-field sound controller failing around two reflective buildings"}
 						/>
 						<div className="pointer-events-none absolute left-4 top-4 flex flex-wrap items-center gap-2">
-							<span className={`rounded-md border bg-[#15141b]/88 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider backdrop-blur ${estimatedMode ? "border-[#61ffca]/20 text-[#61ffca]" : "border-[#ff6767]/20 text-[#ff6767]"}`}>
-								{estimatedMode ? "Estimated H · re-optimized" : "Wrong H · open-field controller"}
-							</span>
-							<span className="rounded-md border border-[#61ffca]/20 bg-[#15141b]/88 px-2.5 py-1.5 font-mono text-[10px] text-[#61ffca] backdrop-blur">
-								{estimatedMode ? "Before" : "Predicts"} {formatDb(controlEnabled ? (estimatedMode ? openActual.bubbleDb : controller.predictedBubbleDb) : 0)}
-							</span>
-							<span className={`rounded-md border bg-[#15141b]/88 px-2.5 py-1.5 font-mono text-[10px] backdrop-blur ${estimatedMode ? "border-[#61ffca]/20 text-[#61ffca]" : "border-[#ff6767]/20 text-[#ff6767]"}`}>
-								{estimatedMode ? "After" : "Actually"} {formatDb(controlEnabled ? actual.bubbleDb : 0)}
+							<span
+								className={`rounded-md border bg-[#0b0e12]/88 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider backdrop-blur ${sequenceMode ? "" : estimatedMode ? "border-[#3bb9e8]/20 text-[#3bb9e8]" : "border-[#ff3b24]/20 text-[#ff3b24]"}`}
+								style={sequenceMode ? { borderColor: `${activeSequenceStage.color}55`, color: activeSequenceStage.color } : undefined}
+							>
+								{sequenceMode ? `${sequenceStage + 1}/4 · ${activeSequenceStage.title} · ${activeSequenceStage.result}` : `${estimatedMode ? "Environment-aware" : "Naïve open-field"} · actual ${formatDb(controlEnabled ? actual.bubbleDb : 0)}`}
 							</span>
 						</div>
-						<div className="pointer-events-none absolute bottom-4 right-4 hidden rounded-md border border-white/10 bg-[#15141b]/88 px-2.5 py-2 font-mono text-[9px] uppercase tracking-wider text-white/40 backdrop-blur sm:block">
-							cyan paths = reflected / diffracted arrivals
-						</div>
+						{sequenceMode ? (
+							<div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-[#0b0e12]/88 px-3 py-2 backdrop-blur">
+								{SEQUENCE_STAGES.map((stage, index) => (
+									<button
+										key={stage.title}
+										type="button"
+										onClick={() => setSequenceStage(index)}
+										className={`h-2 rounded-full transition-all ${index === sequenceStage ? "w-9" : "w-4 bg-white/15 hover:bg-white/30"}`}
+										style={index === sequenceStage ? { backgroundColor: stage.color } : undefined}
+										aria-label={`Show obstacle stage ${index + 1}: ${stage.title}`}
+										aria-pressed={index === sequenceStage}
+									/>
+								))}
+							</div>
+						) : (
+							<div className="pointer-events-none absolute bottom-4 right-4 hidden rounded-md border border-white/10 bg-[#0b0e12]/88 px-2.5 py-2 font-mono text-[9px] uppercase tracking-wider text-white/40 backdrop-blur sm:block">
+								cyan paths = reflected / diffracted arrivals
+							</div>
+						)}
 					</div>
-					<p className="px-1 text-xs leading-5 text-white/40">
-						{estimatedMode
+					<p className="px-1 text-base leading-7 text-white/50">
+						{sequenceMode
+							? activeSequenceStage.body
+							: estimatedMode
 							? "The same array now uses the estimated environmental transfer paths. Reflections are included when the speaker weights are solved."
 							: "The optimizer still assumes direct free-space paths. The canvas evaluates those same speaker weights in a different world containing two reflective buildings."}
 					</p>
 				</div>
 
-				<aside className="space-y-4">
-					<section className={`overflow-hidden rounded-2xl border bg-[#1b1924] ${estimatedMode ? "border-[#61ffca]/20" : "border-[#ff6767]/20"}`}>
+				{showControls ? <aside className="space-y-4">
+					<section className={`overflow-hidden rounded-2xl border bg-[#111820] ${estimatedMode ? "border-[#3bb9e8]/20" : "border-[#ff3b24]/20"}`}>
 						<div className="flex items-start justify-between gap-4 p-5">
 							<div>
-								<p className={`flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.17em] ${estimatedMode ? "text-[#61ffca]" : "text-[#ff6767]"}`}>
+								<p className={`flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.17em] ${estimatedMode ? "text-[#3bb9e8]" : "text-[#ff3b24]"}`}>
 									<Gauge className="size-3.5" /> {estimatedMode ? "Cancellation recovered" : "Model mismatch"}
 								</p>
 								<p className="mt-2 text-xs leading-5 text-white/45">
 									{estimatedMode ? "Improvement after solving against the estimated transfer matrix." : "Attenuation lost because the controller uses the wrong transfer matrix."}
 								</p>
 							</div>
-							<span className={`font-mono text-xl font-semibold ${estimatedMode ? "text-[#61ffca]" : "text-[#ff6767]"}`}>
+							<span className={`font-mono text-xl font-semibold ${estimatedMode ? "text-[#3bb9e8]" : "text-[#ff3b24]"}`}>
 								{estimatedMode ? shownRecoveredDb.toFixed(1) : shownAttenuationLost.toFixed(1)} dB
 							</span>
 						</div>
 						<div className="grid grid-cols-2 border-t border-white/8">
 							<div className="border-r border-white/8 px-5 py-4">
 								<p className="text-[9px] uppercase tracking-wider text-white/30">{estimatedMode ? "Before estimation" : "Open-field prediction"}</p>
-								<p className={`mt-1.5 font-mono text-sm ${estimatedMode ? "text-[#ff6767]" : "text-[#61ffca]"}`}>
+								<p className={`mt-1.5 font-mono text-sm ${estimatedMode ? "text-[#ff3b24]" : "text-[#3bb9e8]"}`}>
 									{formatDb(controlEnabled ? (estimatedMode ? openActual.bubbleDb : controller.predictedBubbleDb) : 0)}
 								</p>
 							</div>
 							<div className="px-5 py-4">
 								<p className="text-[9px] uppercase tracking-wider text-white/30">{estimatedMode ? "After re-optimization" : "Actual scene"}</p>
-								<p className={`mt-1.5 font-mono text-sm ${estimatedMode ? "text-[#61ffca]" : "text-[#ff6767]"}`}>
+								<p className={`mt-1.5 font-mono text-sm ${estimatedMode ? "text-[#3bb9e8]" : "text-[#ff3b24]"}`}>
 									{formatDb(controlEnabled ? actual.bubbleDb : 0)}
 								</p>
 							</div>
 						</div>
 					</section>
 
-					<section className="rounded-2xl border border-white/10 bg-[#1b1924] p-5">
+					<section className="rounded-2xl border border-white/10 bg-[#111820] p-5">
 						<div className="flex items-center justify-between gap-4">
 							<div>
-								<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#a277ff]">
+								<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#2f6df6]">
 									{estimatedMode ? "Environment-aware algorithm" : "Open-field algorithm"}
 								</p>
 								<p className="mt-1 text-sm font-medium">{estimatedMode ? "Measured paths included in H" : "Buildings excluded from H"}</p>
@@ -972,7 +1077,7 @@ export function ObstacleLab({
 							<button
 								type="button"
 								onClick={() => setControlEnabled((value) => !value)}
-								className={`relative h-6 w-11 rounded-full transition ${controlEnabled ? "bg-[#a277ff]" : "bg-white/15"}`}
+								className={`relative h-6 w-11 rounded-full transition ${controlEnabled ? "bg-[#2f6df6]" : "bg-white/15"}`}
 								aria-label={estimatedMode ? "Toggle estimated-H obstacle control" : "Toggle open-field obstacle control"}
 								aria-pressed={controlEnabled}
 							>
@@ -982,7 +1087,7 @@ export function ObstacleLab({
 
 						<label className="mt-6 block text-xs text-white/55" htmlFor={`obstacle-frequency-${mode}`}>
 							<span className="flex items-center justify-between">
-								Frequency <output className="font-mono text-[#ffca85]">{frequency} Hz</output>
+								Frequency <output className="font-mono text-[#ffc247]">{frequency} Hz</output>
 							</span>
 							<input
 								id={`obstacle-frequency-${mode}`}
@@ -992,13 +1097,13 @@ export function ObstacleLab({
 								step="20"
 								value={frequency}
 								onChange={(event) => setFrequency(Number(event.target.value))}
-								className="mt-3 w-full accent-[#a277ff]"
+								className="mt-3 w-full accent-[#2f6df6]"
 							/>
 						</label>
 
 						<label className="mt-5 block text-xs text-white/55" htmlFor={`reflection-strength-${mode}`}>
 							<span className="flex items-center justify-between">
-								Reflection strength <output className="font-mono text-[#82e2ff]">{reflectionStrength.toFixed(1)}×</output>
+								Reflection strength <output className="font-mono text-[#168bd2]">{reflectionStrength.toFixed(1)}×</output>
 							</span>
 							<input
 								id={`reflection-strength-${mode}`}
@@ -1008,77 +1113,26 @@ export function ObstacleLab({
 								step="0.1"
 								value={reflectionStrength}
 								onChange={(event) => setReflectionStrength(Number(event.target.value))}
-								className="mt-3 w-full accent-[#82e2ff]"
+								className="mt-3 w-full accent-[#168bd2]"
 							/>
 						</label>
 
-						<div className={`mt-5 rounded-xl border p-3.5 text-xs leading-5 text-white/42 ${estimatedMode ? "border-[#61ffca]/15 bg-[#61ffca]/[0.035]" : "border-[#ff6767]/15 bg-[#ff6767]/[0.035]"}`}>
-							<p><span className="font-mono text-[#61ffca]">controller:</span> {estimatedMode ? "H ≈ direct + measured reflections" : "H = direct paths only"}</p>
-							<p className="mt-1"><span className="font-mono text-[#ff6767]">world:</span> H = direct + reflections + diffraction</p>
-							<p className="mt-1"><span className="font-mono text-[#f694ff]">guard max:</span> {formatDb(controlEnabled ? actual.worstGuardDb : 0)}</p>
+						<div className={`mt-5 rounded-xl border p-3.5 text-xs leading-5 text-white/42 ${estimatedMode ? "border-[#3bb9e8]/15 bg-[#3bb9e8]/[0.035]" : "border-[#ff3b24]/15 bg-[#ff3b24]/[0.035]"}`}>
+							<p><span className="font-mono text-[#3bb9e8]">controller:</span> {estimatedMode ? "H ≈ direct + measured reflections" : "H = direct paths only"}</p>
+							<p className="mt-1"><span className="font-mono text-[#ff3b24]">world:</span> H = direct + reflections + diffraction</p>
+							<p className="mt-1"><span className="font-mono text-[#ff6a2a]">guard max:</span> {formatDb(controlEnabled ? actual.worstGuardDb : 0)}</p>
 						</div>
 					</section>
 
-					<section className="rounded-2xl border border-[#82e2ff]/15 bg-[#82e2ff]/[0.035] p-5">
-						<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.17em] text-[#82e2ff]">
+					<section className="rounded-2xl border border-[#168bd2]/15 bg-[#168bd2]/[0.035] p-5">
+						<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.17em] text-[#168bd2]">
 							<ShieldAlert className="size-3.5" /> {estimatedMode ? "What changed" : "Why the ring mics are not enough"}
 						</p>
 						<p className="mt-3 text-xs leading-5 text-white/45">
 							{estimatedMode ? "Four remote microphone readings anchor the camera-conditioned estimate near the listener. The deterministic optimizer can now phase the same speakers against the reflected arrivals." : "They observe reflected sound back at the array, which is valuable, but not the pressure inside a remote human’s bubble. One external error signal—or a camera-conditioned propagation model—is still needed to anchor that part of H."}
 						</p>
 					</section>
-				</aside>
+				</aside> : null}
 			</section>
-
-			{mode === "open" ? (
-			<section className="border-t border-white/10 px-5 py-14 sm:px-8 sm:py-16">
-				<div className="mx-auto max-w-[1200px]">
-					<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#82e2ff]">
-						<RefreshCw className="size-3.5" /> What online estimation would do
-					</div>
-					<h3 className="mt-4 max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl">
-						Probe, observe, update H, solve again.
-					</h3>
-					<div className="mt-7 grid gap-3 md:grid-cols-4">
-						{[
-							{
-								icon: AudioWaveform,
-								step: "01",
-								title: "Inject tiny probes",
-								body: "Each speaker adds a different coded signal beneath the chainsaw noise.",
-							},
-							{
-								icon: ScanLine,
-								step: "02",
-								title: "Estimate local paths",
-								body: "Ring microphones correlate those codes to recover array-to-array impulse responses.",
-							},
-							{
-								icon: Camera,
-								step: "03",
-								title: "Infer remote paths",
-								body: "Camera geometry plus sparse error microphones predicts transfer to human bubbles.",
-							},
-							{
-								icon: Waves,
-								step: "04",
-								title: "Resolve safely",
-								body: "A constrained optimizer updates filters while bounding hot spots and speaker effort.",
-							},
-						].map((item) => (
-							<div key={item.step} className="rounded-2xl border border-white/10 bg-[#100f15] p-5">
-								<div className="flex items-center justify-between">
-									<item.icon className="size-4 text-[#82e2ff]" />
-									<span className="font-mono text-[10px] text-white/25">{item.step}</span>
-								</div>
-								<h4 className="mt-4 text-sm font-semibold">{item.title}</h4>
-								<p className="mt-2 text-xs leading-5 text-white/42">{item.body}</p>
-							</div>
-						))}
-					</div>
-				</div>
-			</section>
-			) : null}
-		</>
 	);
 }

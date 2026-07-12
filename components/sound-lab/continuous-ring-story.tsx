@@ -2,6 +2,10 @@
 
 import { CircleDot, RadioTower, UsersRound, Waves } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	pressureFieldColor,
+	WAVE_FIELD_BACKGROUND,
+} from "@/lib/acoustics/wave-palette";
 
 type Complex = { re: number; im: number };
 type Point = { x: number; y: number };
@@ -24,7 +28,7 @@ const STAGES = [
 		title: "People outside the site",
 		eyebrow: "01 · listeners",
 		body: "Start with the people we want to protect beyond the control ring.",
-		color: "#edecee",
+		color: "#f2eee4",
 		duration: 2.4,
 		icon: UsersRound,
 	},
@@ -32,7 +36,7 @@ const STAGES = [
 		title: "The chainsaw radiates",
 		eyebrow: "02 · source field",
 		body: "A centered tone launches the same outgoing circular wave in every direction.",
-		color: "#ffca85",
+		color: "#ffc247",
 		duration: 3.2,
 		icon: CircleDot,
 	},
@@ -40,7 +44,7 @@ const STAGES = [
 		title: "The ideal ring answers",
 		eyebrow: "03 · anti-field",
 		body: "A continuous ring emits the exact opposite outgoing field beyond its boundary.",
-		color: "#82e2ff",
+		color: "#168bd2",
 		duration: 3.2,
 		icon: RadioTower,
 	},
@@ -48,7 +52,7 @@ const STAGES = [
 		title: "Outside cancels; inside remains",
 		eyebrow: "04 · combined field",
 		body: "The two fields sum to zero outside. The interior still contains strong structure.",
-		color: "#61ffca",
+		color: "#3bb9e8",
 		duration: 5.2,
 		icon: Waves,
 	},
@@ -138,9 +142,11 @@ function elapsedAtStage(stageIndex: number) {
 export function ContinuousRingStory({
 	running,
 	active,
+	showControls,
 }: {
 	running: boolean;
 	active: boolean;
+	showControls: boolean;
 }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const frameRef = useRef(0);
@@ -183,7 +189,7 @@ export function ContinuousRingStory({
 			const cosTime = Math.cos(visualPhase);
 			const sinTime = Math.sin(visualPhase);
 
-			context.fillStyle = "#100f15";
+			context.fillStyle = WAVE_FIELD_BACKGROUND;
 			context.fillRect(0, 0, width, height);
 			const step = Math.max(7, Math.round(6 * dpr));
 			if (currentStage > 0) {
@@ -212,18 +218,14 @@ export function ContinuousRingStory({
 									: cAdd(source, anti);
 						const instantaneous = phasor.re * cosTime - phasor.im * sinTime;
 						const signedStrength = Math.tanh(instantaneous * 0.68);
-						const mix = Math.abs(signedStrength) * 0.78;
-						const positive = currentStage === 2 ? [130, 226, 255] : [162, 119, 255];
-						const negative = currentStage === 2 ? [246, 148, 255] : [97, 255, 202];
-						const target = signedStrength >= 0 ? positive : negative;
-						context.fillStyle = `rgb(${Math.round(21 + (target[0] - 21) * mix)} ${Math.round(20 + (target[1] - 20) * mix)} ${Math.round(27 + (target[2] - 27) * mix)})`;
+						context.fillStyle = pressureFieldColor(signedStrength, 0.78);
 						context.fillRect(pixelX, pixelY, step + 1, step + 1);
 					}
 				}
 			}
 
 			context.lineWidth = dpr;
-			context.strokeStyle = "rgba(237,236,238,.09)";
+			context.strokeStyle = "rgba(242,238,228,.09)";
 			for (let x = 0; x <= WORLD.width; x += 1) {
 				const start = toCanvas({ x, y: 0 });
 				const end = toCanvas({ x, y: WORLD.height });
@@ -244,9 +246,9 @@ export function ContinuousRingStory({
 			const sourcePoint = toCanvas(SOURCE);
 			const ringActive = currentStage >= 2;
 			context.save();
-			context.shadowColor = ringActive ? "#82e2ff" : "transparent";
+			context.shadowColor = ringActive ? "#168bd2" : "transparent";
 			context.shadowBlur = ringActive ? 16 * dpr : 0;
-			context.strokeStyle = ringActive ? "#82e2ff" : "rgba(130,226,255,.24)";
+			context.strokeStyle = ringActive ? "#168bd2" : "rgba(22,139,210,.24)";
 			context.lineWidth = (ringActive ? 4 : 2) * dpr;
 			context.beginPath();
 			context.arc(sourcePoint.x, sourcePoint.y, RING_RADIUS * transform.scale, 0, Math.PI * 2);
@@ -255,11 +257,11 @@ export function ContinuousRingStory({
 
 			const sourceActive = currentStage === 1 || currentStage === 3;
 			context.globalAlpha = sourceActive ? 1 : 0.32;
-			context.fillStyle = "#ffca85";
+			context.fillStyle = "#ffc247";
 			context.beginPath();
 			context.arc(sourcePoint.x, sourcePoint.y, 10 * dpr, 0, Math.PI * 2);
 			context.fill();
-			context.strokeStyle = "rgba(255,202,133,.35)";
+			context.strokeStyle = "rgba(255,194,71,.35)";
 			context.lineWidth = 10 * dpr;
 			context.stroke();
 			context.globalAlpha = 1;
@@ -272,7 +274,7 @@ export function ContinuousRingStory({
 				context.save();
 				context.translate(point.x, point.y);
 				context.scale(peoplePulse, peoplePulse);
-				context.strokeStyle = currentStage === 3 ? "#61ffca" : currentStage === 0 ? "#edecee" : "rgba(237,236,238,.55)";
+				context.strokeStyle = currentStage === 3 ? "#3bb9e8" : currentStage === 0 ? "#f2eee4" : "rgba(242,238,228,.55)";
 				context.lineWidth = 2.6 * dpr;
 				context.beginPath();
 				context.arc(0, -11 * dpr, 5.5 * dpr, 0, Math.PI * 2);
@@ -311,7 +313,7 @@ export function ContinuousRingStory({
 				context.moveTo(point.x, point.y);
 				context.lineTo(x - 4 * dpr, centerY);
 				context.stroke();
-				context.fillStyle = "rgba(16,15,21,.92)";
+				context.fillStyle = "rgba(7,10,13,.92)";
 				context.beginPath();
 				context.roundRect(x, centerY - boxHeight / 2, boxWidth, boxHeight, 7 * dpr);
 				context.fill();
@@ -323,17 +325,17 @@ export function ContinuousRingStory({
 			};
 
 			if (currentStage === 0) {
-				drawLabel("PEOPLE OUTSIDE THE SITE", PEOPLE[1], 34, -54, "#edecee");
+				drawLabel("PEOPLE OUTSIDE THE SITE", PEOPLE[1], 34, -54, "#f2eee4");
 			}
 			if (currentStage === 1) {
-				drawLabel("CHAINSAW SOURCE", SOURCE, 32, 0, "#ffca85");
+				drawLabel("CHAINSAW SOURCE", SOURCE, 32, 0, "#ffc247");
 			}
 			if (currentStage === 2) {
-				drawLabel("CONTINUOUS ANTI-SOUND RING", { x: SOURCE.x, y: SOURCE.y - RING_RADIUS }, 30, -28, "#82e2ff");
+				drawLabel("CONTINUOUS ANTI-SOUND RING", { x: SOURCE.x, y: SOURCE.y - RING_RADIUS }, 30, -28, "#168bd2");
 			}
 			if (currentStage === 3) {
-				drawLabel("OUTSIDE FIELD = 0", PEOPLE[1], 34, -54, "#61ffca");
-				drawLabel("FIELD REMAINS INSIDE", SOURCE, 32, 0, "#ffca85");
+				drawLabel("OUTSIDE FIELD = 0", PEOPLE[1], 34, -54, "#3bb9e8");
+				drawLabel("FIELD REMAINS INSIDE", SOURCE, 32, 0, "#ffc247");
 			}
 		},
 		[active, running],
@@ -353,23 +355,23 @@ export function ContinuousRingStory({
 	const ActiveIcon = activeStage.icon;
 
 	return (
-		<section className="mx-auto grid max-w-[1500px] gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+		<section className={`mx-auto grid max-w-[1500px] gap-4 p-4 sm:p-6 ${showControls ? "lg:grid-cols-[minmax(0,1fr)_340px]" : ""}`}>
 			<div className="space-y-3">
-				<div className="relative aspect-[3/2] min-h-[420px] max-h-[720px] overflow-hidden rounded-2xl border border-white/10 bg-[#100f15] shadow-2xl shadow-black/30">
+				<div className="relative aspect-[3/2] min-h-[420px] max-h-[720px] overflow-hidden rounded-2xl border border-white/10 bg-[#070a0d] shadow-2xl shadow-black/30">
 					<canvas
 						ref={canvasRef}
 						className="absolute inset-0 h-full w-full"
 						role="img"
 						aria-label="Animated ideal continuous-ring sound cancellation story"
 					/>
-					<div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-lg border border-white/10 bg-[#15141b]/88 px-3 py-2 backdrop-blur">
+					<div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-lg border border-white/10 bg-[#0b0e12]/88 px-3 py-2 backdrop-blur">
 						<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/45">
 							Ideal model
 						</span>
 						<span className="h-3 w-px bg-white/10" />
-						<span className="font-mono text-[10px] text-[#ffca85]">{FREQUENCY} Hz</span>
+						<span className="font-mono text-[10px] text-[#ffc247]">{FREQUENCY} Hz</span>
 					</div>
-					<div className="pointer-events-none absolute bottom-4 right-4 rounded-lg border border-white/10 bg-[#15141b]/88 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.13em] text-white/45 backdrop-blur">
+					<div className="pointer-events-none absolute bottom-4 right-4 rounded-lg border border-white/10 bg-[#0b0e12]/88 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.13em] text-white/45 backdrop-blur">
 						Stage {stage + 1} / {STAGES.length}
 					</div>
 				</div>
@@ -378,8 +380,8 @@ export function ContinuousRingStory({
 				</p>
 			</div>
 
-			<aside className="space-y-4">
-				<section className="rounded-2xl border border-white/10 bg-[#1b1924] p-5">
+			{showControls ? <aside className="space-y-4">
+				<section className="rounded-2xl border border-white/10 bg-[#111820] p-5">
 					<div className="flex items-center justify-between gap-3">
 						<p className="font-mono text-[10px] uppercase tracking-[0.17em]" style={{ color: activeStage.color }}>
 							{activeStage.eyebrow}
@@ -394,7 +396,7 @@ export function ContinuousRingStory({
 								key={item.title}
 								type="button"
 								onClick={() => jumpToStage(index)}
-								className={`h-2 rounded-full transition ${index === stage ? "bg-[#61ffca]" : "bg-white/10 hover:bg-white/20"}`}
+								className={`h-2 rounded-full transition ${index === stage ? "bg-[#3bb9e8]" : "bg-white/10 hover:bg-white/20"}`}
 								aria-label={`Show stage ${index + 1}: ${item.title}`}
 								aria-pressed={index === stage}
 							/>
@@ -402,17 +404,17 @@ export function ContinuousRingStory({
 					</div>
 				</section>
 
-				<section className="rounded-2xl border border-[#61ffca]/15 bg-[#61ffca]/[0.035] p-5">
-					<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#61ffca]">
+				<section className="rounded-2xl border border-[#3bb9e8]/15 bg-[#3bb9e8]/[0.035] p-5">
+					<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#3bb9e8]">
 						What the final frame means
 					</p>
 					<div className="mt-4 space-y-3 text-sm leading-6 text-white/48">
-						<p><span className="text-[#a277ff]">Source</span> + <span className="text-[#82e2ff]">anti-ring</span> = <span className="text-[#61ffca]">silence outside</span>.</p>
+						<p><span className="text-[#2f6df6]">Source</span> + <span className="text-[#168bd2]">anti-ring</span> = <span className="text-[#3bb9e8]">silence outside</span>.</p>
 						<p>The ring still supports a regular standing field inside, so cancellation is not the same as destroying all acoustic energy.</p>
 					</div>
 				</section>
 
-				<section className="rounded-2xl border border-white/10 bg-[#1b1924] p-5">
+				<section className="rounded-2xl border border-white/10 bg-[#111820] p-5">
 					<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-white/35">Ideal assumptions</p>
 					<ul className="mt-3 space-y-2 text-xs leading-5 text-white/38">
 						<li>• Perfect radial symmetry</li>
@@ -421,7 +423,7 @@ export function ContinuousRingStory({
 						<li>• No wind or reflections</li>
 					</ul>
 				</section>
-			</aside>
+			</aside> : null}
 		</section>
 	);
 }

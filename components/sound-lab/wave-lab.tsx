@@ -15,6 +15,7 @@ import {
 	Play,
 	Radio,
 	RotateCcw,
+	Settings2,
 	Sparkles,
 	Trash2,
 	TriangleAlert,
@@ -33,9 +34,12 @@ import {
 } from "react";
 import { ChainsawLab } from "@/components/sound-lab/chainsaw-lab";
 import { ContinuousRingStory } from "@/components/sound-lab/continuous-ring-story";
-import { HEstimationLab } from "@/components/sound-lab/h-estimation-lab";
 import { MultiHumanLab } from "@/components/sound-lab/multi-human-lab";
 import { ObstacleLab } from "@/components/sound-lab/obstacle-lab";
+import {
+	pressureFieldColor,
+	WAVE_FIELD_BACKGROUND,
+} from "@/lib/acoustics/wave-palette";
 
 type Point = { id: number; x: number; y: number };
 type Complex = { re: number; im: number };
@@ -68,13 +72,10 @@ type ControllerResult = {
 };
 
 const AURA = {
-	background: [21, 20, 27] as const,
-	foreground: "#edecee",
-	purple: [162, 119, 255] as const,
-	green: [97, 255, 202] as const,
-	orange: "#ffca85",
-	blue: "#82e2ff",
-	red: "#ff6767",
+	foreground: "#f2eee4",
+	orange: "#ffc247",
+	blue: "#168bd2",
+	red: "#ff3b24",
 };
 
 function cAdd(a: Complex, b: Complex): Complex {
@@ -510,10 +511,23 @@ function fieldAt(
 	point: Pick<Point, "x" | "y">,
 	controller: ControllerResult,
 	speakers: Point[],
-	controlEnabled: boolean,
+	speakersEnabled: boolean,
+	sourceEnabled: boolean,
 ) {
-	if (!controlEnabled) return green(SOURCE, point, controller.waveNumber);
-	return pressureWithWeights(point, controller.waveNumber, speakers, controller.weights);
+	let pressure = sourceEnabled
+		? green(SOURCE, point, controller.waveNumber)
+		: { re: 0, im: 0 };
+	if (!speakersEnabled) return pressure;
+	for (let index = 0; index < speakers.length; index += 1) {
+		pressure = cAdd(
+			pressure,
+			cMul(
+				controller.weights[index] ?? { re: 0, im: 0 },
+				green(speakers[index], point, controller.waveNumber),
+			),
+		);
+	}
+	return pressure;
 }
 
 function resizeCanvas(canvas: HTMLCanvasElement) {
@@ -565,15 +579,34 @@ function Waveform({ ratio }: { ratio: number }) {
 			<polyline
 				points={sourcePoints}
 				fill="none"
-				stroke="rgba(255,202,133,.28)"
+				stroke="rgba(255,194,71,.28)"
 				strokeWidth="1.2"
 			/>
 			<polyline
 				points={points}
 				fill="none"
-				stroke="#61ffca"
+				stroke="#3bb9e8"
 				strokeWidth="1.8"
 			/>
+		</svg>
+	);
+}
+
+function SpeakerGlyph({ className = "" }: { className?: string }) {
+	return (
+		<svg viewBox="0 0 20 20" className={className} aria-hidden>
+			<path d="M3.5 7.2h3.3L11.4 4v12l-4.6-3.2H3.5z" fill="currentColor" />
+			<path d="M13.2 7.1c1.4 1.7 1.4 4.1 0 5.8M15.5 5.2c2.4 2.8 2.4 6.8 0 9.6" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+		</svg>
+	);
+}
+
+function SourceGlyph({ className = "" }: { className?: string }) {
+	return (
+		<svg viewBox="0 0 20 20" className={className} aria-hidden>
+			<circle cx="10" cy="10" r="2.2" fill="currentColor" />
+			<circle cx="10" cy="10" r="5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+			<circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="1.2" strokeDasharray="3 2" />
 		</svg>
 	);
 }
@@ -598,29 +631,20 @@ function useSectionActive(ref: { current: HTMLElement | null }) {
 
 function ExperimentHeading({
 	number,
-	eyebrow,
 	title,
 	body,
-	color,
 }: {
 	number: string;
-	eyebrow: string;
 	title: string;
 	body: string;
-	color: string;
 }) {
 	return (
-		<div className="mx-auto max-w-[1500px] px-5 pb-1 pt-14 sm:px-8 sm:pt-20">
-			<div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color }}>
-				<span className="grid size-7 place-items-center rounded-full border" style={{ borderColor: `${color}55` }}>
-					{number}
-				</span>
-				{eyebrow}
-			</div>
-			<h2 className="mt-4 max-w-4xl text-3xl font-semibold tracking-tight sm:text-4xl">
+		<div className="mx-auto max-w-[1500px] px-5 pb-3 pt-16 sm:px-8 sm:pt-24">
+			<p className="font-mono text-sm text-[#168bd2]">{number.padStart(2, "0")}</p>
+			<h2 className="mt-5 max-w-5xl text-2xl font-semibold leading-[1.08] tracking-[-0.025em] sm:text-3xl lg:text-4xl">
 				{title}
 			</h2>
-			<p className="mt-3 max-w-3xl text-sm leading-6 text-white/48 sm:text-base">
+			<p className="mt-6 max-w-4xl text-lg leading-8 text-white/55 sm:text-xl sm:leading-9">
 				{body}
 			</p>
 		</div>
@@ -633,8 +657,6 @@ export function WaveLab() {
 	const discreteSectionRef = useRef<HTMLDivElement>(null);
 	const multipleSectionRef = useRef<HTMLDivElement>(null);
 	const obstacleSectionRef = useRef<HTMLDivElement>(null);
-	const estimationSectionRef = useRef<HTMLDivElement>(null);
-	const recoverySectionRef = useRef<HTMLDivElement>(null);
 	const chainsawSectionRef = useRef<HTMLDivElement>(null);
 	const frameRef = useRef<number>(0);
 	const lastFrameRef = useRef(0);
@@ -648,15 +670,12 @@ export function WaveLab() {
 	const discreteActive = useSectionActive(discreteSectionRef);
 	const multipleActive = useSectionActive(multipleSectionRef);
 	const obstacleActive = useSectionActive(obstacleSectionRef);
-	const estimationActive = useSectionActive(estimationSectionRef);
-	const recoveryActive = useSectionActive(recoverySectionRef);
 	const chainsawActive = useSectionActive(chainsawSectionRef);
 	const [running, setRunning] = useState(true);
+	const [showControls, setShowControls] = useState(false);
 	const [storyResetKey, setStoryResetKey] = useState(0);
 	const [multiResetKey, setMultiResetKey] = useState(0);
 	const [obstacleResetKey, setObstacleResetKey] = useState(0);
-	const [estimationResetKey, setEstimationResetKey] = useState(0);
-	const [recoveryResetKey, setRecoveryResetKey] = useState(0);
 	const [chainsawResetKey, setChainsawResetKey] = useState(0);
 	const [autoTrack, setAutoTrack] = useState(true);
 	const [frequency, setFrequency] = useState(440);
@@ -665,6 +684,7 @@ export function WaveLab() {
 	const [bubbleRadius, setBubbleRadius] = useState(0.45);
 	const [controllerMode, setControllerMode] = useState<ControllerMode>("human");
 	const [controlEnabled, setControlEnabled] = useState(true);
+	const [sourceEnabled, setSourceEnabled] = useState(true);
 	const [tool, setTool] = useState<Tool>("move");
 	const [sensors, setSensors] = useState<Point[]>(() => buildRing(8, 1.55, Math.PI / 8));
 	const [speakers, setSpeakers] = useState<Point[]>(() => buildRing(8));
@@ -702,10 +722,14 @@ export function WaveLab() {
 	);
 
 	const sourceAtObserver = green(SOURCE, observer, controller.waveNumber);
-	const totalAtObserver = fieldAt(observer, controller, speakers, controlEnabled);
-	const observerRatio = controlEnabled
-		? magnitude(totalAtObserver) / magnitude(sourceAtObserver)
-		: 1;
+	const totalAtObserver = fieldAt(
+		observer,
+		controller,
+		speakers,
+		controlEnabled,
+		sourceEnabled,
+	);
+	const observerRatio = magnitude(totalAtObserver) / magnitude(sourceAtObserver);
 	const observerDb = 20 * Math.log10(Math.max(1e-7, observerRatio));
 	const rankedFrequencies = useMemo(
 		() =>
@@ -747,7 +771,7 @@ export function WaveLab() {
 				y: transform.offsetY + point.y * transform.scale,
 			});
 
-			context.fillStyle = "#100f15";
+			context.fillStyle = WAVE_FIELD_BACKGROUND;
 			context.fillRect(0, 0, width, height);
 			const step = Math.max(7, Math.round(6 * dpr));
 			const visualPhase = timeRef.current * Math.PI * 1.35;
@@ -768,27 +792,22 @@ export function WaveLab() {
 						x: (pixelX - transform.offsetX) / transform.scale,
 						y: (pixelY - transform.offsetY) / transform.scale,
 					};
-					const phasor = fieldAt(point, controller, speakers, controlEnabled);
+					const phasor = fieldAt(
+						point,
+						controller,
+						speakers,
+						controlEnabled,
+						sourceEnabled,
+					);
 					const instantaneous = phasor.re * cosTime - phasor.im * sinTime;
 					const signedStrength = Math.tanh(instantaneous * 0.72);
-					const mix = Math.abs(signedStrength) * 0.76;
-					const target = signedStrength >= 0 ? AURA.purple : AURA.green;
-					const red = Math.round(
-						AURA.background[0] + (target[0] - AURA.background[0]) * mix,
-					);
-					const greenValue = Math.round(
-						AURA.background[1] + (target[1] - AURA.background[1]) * mix,
-					);
-					const blue = Math.round(
-						AURA.background[2] + (target[2] - AURA.background[2]) * mix,
-					);
-					context.fillStyle = `rgb(${red} ${greenValue} ${blue})`;
+					context.fillStyle = pressureFieldColor(signedStrength, 0.76);
 					context.fillRect(pixelX, pixelY, step + 1, step + 1);
 				}
 			}
 
 			context.lineWidth = dpr;
-			context.strokeStyle = "rgba(237,236,238,.09)";
+			context.strokeStyle = "rgba(242,238,228,.09)";
 			for (let x = 0; x <= WORLD.width; x += 1) {
 				const start = toCanvas({ x, y: 0 });
 				const end = toCanvas({ x, y: WORLD.height });
@@ -810,7 +829,7 @@ export function WaveLab() {
 			if (controller.mode === "boundary") {
 				context.save();
 				context.setLineDash([6 * dpr, 7 * dpr]);
-				context.strokeStyle = "rgba(246,148,255,.55)";
+				context.strokeStyle = "rgba(255,106,42,.55)";
 				context.lineWidth = 1.25 * dpr;
 				context.beginPath();
 				context.arc(center.x, center.y, boundaryRadius * transform.scale, 0, Math.PI * 2);
@@ -819,8 +838,8 @@ export function WaveLab() {
 			} else {
 				const humanPoint = toCanvas(observer);
 				context.save();
-				context.fillStyle = "rgba(97,255,202,.055)";
-				context.strokeStyle = "rgba(97,255,202,.8)";
+				context.fillStyle = "rgba(59,185,232,.055)";
+				context.strokeStyle = "rgba(59,185,232,.8)";
 				context.lineWidth = 1.5 * dpr;
 				context.beginPath();
 				context.arc(humanPoint.x, humanPoint.y, bubbleRadius * transform.scale, 0, Math.PI * 2);
@@ -829,7 +848,7 @@ export function WaveLab() {
 
 				for (const targetPoint of controller.targetPoints) {
 					const sample = toCanvas(targetPoint);
-					context.fillStyle = "rgba(97,255,202,.38)";
+					context.fillStyle = "rgba(59,185,232,.38)";
 					context.beginPath();
 					context.arc(sample.x, sample.y, 1.25 * dpr, 0, Math.PI * 2);
 					context.fill();
@@ -840,7 +859,7 @@ export function WaveLab() {
 					: 0;
 				if (guardRadius > 0) {
 					context.setLineDash([3 * dpr, 8 * dpr]);
-					context.strokeStyle = "rgba(255,103,103,.36)";
+					context.strokeStyle = "rgba(255,59,36,.36)";
 					context.lineWidth = dpr;
 					context.beginPath();
 					context.arc(humanPoint.x, humanPoint.y, guardRadius, 0, Math.PI * 2);
@@ -854,7 +873,7 @@ export function WaveLab() {
 				if (sensorIndex < 0) continue;
 				const start = toCanvas(sensors[sensorIndex]);
 				const end = toCanvas(speakers[index]);
-				context.strokeStyle = "rgba(130,226,255,.2)";
+				context.strokeStyle = "rgba(22,139,210,.2)";
 				context.beginPath();
 				context.moveTo(start.x, start.y);
 				context.lineTo(end.x, end.y);
@@ -866,7 +885,7 @@ export function WaveLab() {
 				context.save();
 				context.translate(point.x, point.y);
 				context.rotate(Math.PI / 4);
-				context.fillStyle = "#15141b";
+				context.fillStyle = "#0b0e12";
 				context.strokeStyle = AURA.blue;
 				context.lineWidth = 1.6 * dpr;
 				context.fillRect(-5 * dpr, -5 * dpr, 10 * dpr, 10 * dpr);
@@ -876,8 +895,8 @@ export function WaveLab() {
 
 			for (const speaker of speakers) {
 				const point = toCanvas(speaker);
-				context.fillStyle = "#15141b";
-				context.strokeStyle = controlEnabled ? "#a277ff" : "rgba(162,119,255,.4)";
+				context.fillStyle = "#0b0e12";
+				context.strokeStyle = controlEnabled ? "#2f6df6" : "rgba(47,109,246,.4)";
 				context.lineWidth = 1.8 * dpr;
 				context.beginPath();
 				context.arc(point.x, point.y, 8 * dpr, 0, Math.PI * 2);
@@ -888,17 +907,20 @@ export function WaveLab() {
 				context.stroke();
 			}
 
+			context.save();
+			context.globalAlpha = sourceEnabled ? 1 : 0.24;
 			context.fillStyle = AURA.orange;
 			context.beginPath();
 			context.arc(center.x, center.y, 7 * dpr, 0, Math.PI * 2);
 			context.fill();
-			context.strokeStyle = "rgba(255,202,133,.35)";
+			context.strokeStyle = "rgba(255,194,71,.35)";
 			context.lineWidth = 8 * dpr;
 			context.stroke();
+			context.restore();
 
 			const observerPoint = toCanvas(observer);
-			context.fillStyle = "#15141b";
-			context.strokeStyle = "#61ffca";
+			context.fillStyle = "#0b0e12";
+			context.strokeStyle = "#3bb9e8";
 			context.lineWidth = 2 * dpr;
 			context.beginPath();
 			context.arc(observerPoint.x, observerPoint.y, 11 * dpr, 0, Math.PI * 2);
@@ -948,7 +970,7 @@ export function WaveLab() {
 				context.stroke();
 
 				context.globalAlpha = 1;
-				context.fillStyle = "rgba(16,15,21,.9)";
+				context.fillStyle = "rgba(7,10,13,.9)";
 				context.strokeStyle = `${color}66`;
 				context.lineWidth = dpr;
 				context.beginPath();
@@ -962,8 +984,8 @@ export function WaveLab() {
 
 			drawCallout({
 				anchor: center,
-				text: "SOURCE",
-				color: "#ffca85",
+				text: sourceEnabled ? "SOURCE" : "SOURCE OFF",
+				color: sourceEnabled ? "#ffc247" : "#6f6a5e",
 				offset: 30,
 				verticalOffset: 0,
 			});
@@ -971,7 +993,7 @@ export function WaveLab() {
 			drawCallout({
 				anchor: observerPoint,
 				text: observerLabel,
-				color: "#61ffca",
+				color: "#3bb9e8",
 				offset: 42,
 				verticalOffset: -52,
 			});
@@ -987,6 +1009,7 @@ export function WaveLab() {
 			observerDb,
 			running,
 			sensors,
+			sourceEnabled,
 			speakers,
 		],
 	);
@@ -1054,6 +1077,7 @@ export function WaveLab() {
 		setBubbleRadius(0.45);
 		setControllerMode("human");
 		setControlEnabled(true);
+		setSourceEnabled(true);
 		setAutoTrack(true);
 		setTool("move");
 		timeRef.current = 0;
@@ -1148,23 +1172,32 @@ export function WaveLab() {
 	];
 
 	return (
-		<main className="min-h-screen bg-[#15141b] text-[#edecee]">
+		<main className="min-h-screen bg-[#0b0e12] text-[#f2eee4]">
 			<header className="border-b border-white/10 px-5 py-4 sm:px-8">
 				<div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4">
 					<div className="flex items-center gap-3">
-						<div className="grid size-9 place-items-center rounded-lg border border-[#a277ff]/40 bg-[#a277ff]/10">
-							<Waves className="size-[18px] text-[#a277ff]" />
+						<div className="grid size-9 place-items-center rounded-lg border border-[#2f6df6]/40 bg-[#2f6df6]/10">
+							<Waves className="size-[18px] text-[#2f6df6]" />
 						</div>
 						<div>
 							<h1 className="text-sm font-semibold tracking-[-0.01em] sm:text-base">
 								Active sound control lab
 							</h1>
 							<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-white/40">
-								Nine-part thread · scroll to compare
+								Seven statements · scroll to understand
 							</p>
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
+						<button
+							type="button"
+							onClick={() => setShowControls((value) => !value)}
+							className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs transition ${showControls ? "border-[#168bd2]/45 bg-[#168bd2]/10 text-[#3bb9e8]" : "border-white/10 text-white/55 hover:border-white/20 hover:text-white"}`}
+							aria-pressed={showControls}
+						>
+							<Settings2 className="size-3.5" />
+							<span className="hidden sm:inline">{showControls ? "Hide controls & data" : "Controls & data"}</span>
+						</button>
 						<button
 							type="button"
 							onClick={() => {
@@ -1172,8 +1205,6 @@ export function WaveLab() {
 								setStoryResetKey((value) => value + 1);
 								setMultiResetKey((value) => value + 1);
 								setObstacleResetKey((value) => value + 1);
-								setEstimationResetKey((value) => value + 1);
-								setRecoveryResetKey((value) => value + 1);
 								setChainsawResetKey((value) => value + 1);
 							}}
 							className="grid size-9 place-items-center rounded-lg border border-white/10 text-white/55 transition hover:border-white/20 hover:text-white"
@@ -1184,7 +1215,7 @@ export function WaveLab() {
 						<button
 							type="button"
 							onClick={() => setRunning((value) => !value)}
-							className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#edecee] px-3.5 text-xs font-medium text-[#15141b] transition hover:bg-white"
+							className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#f2eee4] px-3.5 text-xs font-medium text-[#0b0e12] transition hover:bg-white"
 						>
 							{running ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
 							{running ? "Pause" : "Run"}
@@ -1193,25 +1224,23 @@ export function WaveLab() {
 				</div>
 			</header>
 
-			<nav className="sticky top-0 z-30 border-b border-white/10 bg-[#15141b]/92 px-4 py-2 backdrop-blur-xl sm:px-6" aria-label="Experiment sequence">
-				<div className="mx-auto grid max-w-[1500px] grid-cols-3 gap-1 sm:grid-cols-5 xl:grid-cols-9">
+			<nav className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0e12]/92 px-4 py-2 backdrop-blur-xl sm:px-6" aria-label="Experiment sequence">
+				<div className="mx-auto grid max-w-[1500px] grid-cols-2 gap-1 sm:grid-cols-4 xl:grid-cols-7">
 					{[
-						["#experiment-1", "01", "Ideal shell"],
-						["#experiment-2", "02", "One person"],
-						["#experiment-3", "03", "Three people"],
-						["#experiment-4", "04", "Wrong H"],
-						["#experiment-5", "05", "Estimate H"],
-						["#experiment-6", "06", "Recover"],
-						["#experiment-7", "07", "Real audio"],
-						["#experiment-8", "08", "Evidence"],
-						["#experiment-9", "09", "Vision"],
+						["#experiment-1", "01", "A shell works"],
+						["#experiment-2", "02", "Track one person"],
+						["#experiment-3", "03", "Protect many"],
+						["#experiment-4", "04", "Handle obstacles"],
+						["#experiment-5", "05", "Use real sound"],
+						["#experiment-6", "06", "Set expectations"],
+						["#experiment-7", "07", "Build the system"],
 					].map(([href, number, label]) => (
 						<a
 							key={href}
 							href={href}
 							className="rounded-lg border border-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-white/40 transition hover:border-white/10 hover:bg-white/[0.035] hover:text-white/75"
 						>
-							<span className="mr-2 text-[#82e2ff]">{number}</span>{label}
+							<span className="mr-2 text-[#168bd2]">{number}</span>{label}
 						</a>
 					))}
 				</div>
@@ -1220,25 +1249,21 @@ export function WaveLab() {
 			<div id="experiment-1" ref={idealSectionRef} className="scroll-mt-14 border-b border-white/10">
 				<ExperimentHeading
 					number="1"
-					eyebrow="Ideal mathematical limit"
-					title="Can a perfect shell erase an outgoing wave?"
-					body="Start with the exception: a continuous, zero-delay ring around a centered pure tone can exactly cancel the exterior field."
-					color="#82e2ff"
+					title="Sound cancellation is possible with a continuous shell of speakers."
+					body="A perfectly continuous, zero-delay ring can emit an equal and opposite wave. Outside the shell, the two fields cancel; inside, the original sound remains."
 				/>
-				<ContinuousRingStory key={storyResetKey} running={running} active={idealActive} />
+				<ContinuousRingStory key={`story-${storyResetKey}`} running={running} active={idealActive} showControls={showControls} />
 			</div>
 
 			<div id="experiment-2" ref={discreteSectionRef} className="scroll-mt-14 border-b border-white/10">
 				<ExperimentHeading
 					number="2"
-					eyebrow="Finite array · open field"
-					title="Can discrete speakers follow one moving person?"
-					body="Replace the perfect shell with a finite sensor-speaker ring and optimize a small quiet bubble around a tracked listener."
-					color="#61ffca"
+					title="Discrete speakers can track and cancel sound for a moving pedestrian."
+					body="A finite array cannot silence the whole exterior field, but it can steer a local quiet region toward a tracked person and continuously recompute the speaker phases as they move."
 				/>
-			<section className="mx-auto grid max-w-[1500px] gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+			<section className={`mx-auto grid max-w-[1500px] gap-4 p-4 sm:p-6 ${showControls ? "lg:grid-cols-[minmax(0,1fr)_340px]" : ""}`}>
 				<div className="space-y-3">
-					<div className="relative aspect-[3/2] min-h-[420px] max-h-[720px] overflow-hidden rounded-2xl border border-white/10 bg-[#100f15] shadow-2xl shadow-black/30">
+					<div className="relative aspect-[3/2] min-h-[420px] max-h-[720px] overflow-hidden rounded-2xl border border-white/10 bg-[#070a0d] shadow-2xl shadow-black/30">
 						<canvas
 							ref={canvasRef}
 							data-testid="sound-canvas"
@@ -1251,22 +1276,30 @@ export function WaveLab() {
 							aria-label="Interactive pressure field. Drag the sensors, speakers, and tracked human."
 						/>
 
-						<div className="pointer-events-none absolute left-4 top-4 flex flex-wrap items-center gap-2">
-							<span className="rounded-md border border-white/10 bg-[#15141b]/85 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-white/50 backdrop-blur">
-								Total pressure
-							</span>
-							<span className="rounded-md border border-[#f694ff]/20 bg-[#15141b]/85 px-2.5 py-1.5 font-mono text-[10px] text-[#f694ff] backdrop-blur">
-								{controller.mode === "human" ? "Bubble avg" : "Γ fit"}{" "}
-								{formatDb(controller.reductionDb)}
-							</span>
-							{controller.mode === "human" ? (
-								<span className="rounded-md border border-[#ff6767]/20 bg-[#15141b]/85 px-2.5 py-1.5 font-mono text-[10px] text-[#ff6767] backdrop-blur">
-									Guard max {formatDb(controller.worstGuardDb)}
-								</span>
-							) : null}
+						<div className="absolute left-4 top-4 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#0b0e12]/88 p-1.5 backdrop-blur">
+							<label className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${controlEnabled ? "border-[#2f6df6]/35 bg-[#2f6df6]/10 text-white/85" : "border-transparent text-white/35 hover:text-white/60"}`}>
+								<input
+									type="checkbox"
+									checked={controlEnabled}
+									onChange={(event) => setControlEnabled(event.target.checked)}
+									className="size-3.5 accent-[#2f6df6]"
+								/>
+								<SpeakerGlyph className={`size-4 ${controlEnabled ? "text-[#2f6df6]" : "text-white/25"}`} />
+								<span>Speakers</span>
+							</label>
+							<label className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${sourceEnabled ? "border-[#ffc247]/30 bg-[#ffc247]/8 text-white/85" : "border-transparent text-white/35 hover:text-white/60"}`}>
+								<input
+									type="checkbox"
+									checked={sourceEnabled}
+									onChange={(event) => setSourceEnabled(event.target.checked)}
+									className="size-3.5 accent-[#ffc247]"
+								/>
+								<SourceGlyph className={`size-4 ${sourceEnabled ? "text-[#ffc247]" : "text-white/25"}`} />
+								<span>Source</span>
+							</label>
 						</div>
 
-						<div className="absolute bottom-4 left-4 flex flex-wrap gap-1.5 rounded-lg border border-white/10 bg-[#15141b]/85 p-1.5 backdrop-blur">
+						{showControls ? <div className="absolute bottom-4 left-4 flex flex-wrap gap-1.5 rounded-lg border border-white/10 bg-[#0b0e12]/85 p-1.5 backdrop-blur">
 							{toolOptions.map((option) => (
 								<button
 									key={option.id}
@@ -1283,39 +1316,33 @@ export function WaveLab() {
 									<span className="hidden sm:inline">{option.label}</span>
 								</button>
 							))}
-						</div>
+						</div> : null}
 
-						<div className="pointer-events-none absolute bottom-4 right-4 hidden rounded-md border border-white/10 bg-[#15141b]/85 px-2.5 py-2 font-mono text-[9px] uppercase leading-5 tracking-wider text-white/40 backdrop-blur sm:block">
-							<span className="text-[#82e2ff]">◇</span> sensor &nbsp;
-							<span className="text-[#a277ff]">○</span> speaker &nbsp;
-							<span className="text-[#61ffca]">⊕</span>{" "}
-							{controller.mode === "human" ? "tracked human" : "bystander"}
-						</div>
 					</div>
 					<p className="px-1 text-xs leading-5 text-white/40">
 						{controller.mode === "human"
 							? autoTrack
-								? "The controller follows the human around a slow ellipse. Grab the green crosshair to take over manually."
-								: "Drag any node. The green samples define the quiet bubble; the red ring measures nearby amplification."
+								? "The controller follows the human around a slow ellipse. Grab the blue crosshair to take over manually."
+								: "Drag any node. The blue samples define the quiet bubble; the red ring measures nearby amplification."
 							: "Drag any node. Speakers pair to the nearest sensor; the dashed ring is the exterior boundary being fitted."}
 					</p>
 				</div>
 
-				<aside className="space-y-4">
+				{showControls ? <aside className="space-y-4">
 					<section
 						data-testid="bystander-meter"
-						className="overflow-hidden rounded-2xl border border-[#61ffca]/20 bg-[#1b1924]"
+						className="overflow-hidden rounded-2xl border border-[#3bb9e8]/20 bg-[#111820]"
 					>
 						<div className="flex items-start justify-between gap-4 p-5 pb-2">
 							<div>
-								<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.17em] text-[#61ffca]">
+								<p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.17em] text-[#3bb9e8]">
 									<Gauge className="size-3.5" />{" "}
 									{controller.mode === "human" ? "Tracked human" : "Bystander meter"}
 								</p>
 								<p className="mt-2 text-xs text-white/45">
 									{controller.mode === "human"
 										? `Optimizing a ${bubbleRadius.toFixed(2)} m bubble around this point.`
-										: "Drag the green crosshair anywhere outside."}
+										: "Drag the blue crosshair anywhere outside."}
 								</p>
 								{controller.mode === "human" ? (
 									<button
@@ -1323,20 +1350,20 @@ export function WaveLab() {
 										onClick={() => setAutoTrack((value) => !value)}
 										className={`mt-3 inline-flex items-center gap-2 rounded-full border px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] transition ${
 											autoTrack
-												? "border-[#61ffca]/30 bg-[#61ffca]/8 text-[#61ffca]"
+												? "border-[#3bb9e8]/30 bg-[#3bb9e8]/8 text-[#3bb9e8]"
 												: "border-white/10 text-white/40 hover:border-white/20 hover:text-white/70"
 										}`}
 										aria-pressed={autoTrack}
 									>
 										<span
-											className={`size-1.5 rounded-full ${autoTrack ? "bg-[#61ffca] shadow-[0_0_8px_#61ffca]" : "bg-white/25"}`}
+											className={`size-1.5 rounded-full ${autoTrack ? "bg-[#3bb9e8] shadow-[0_0_8px_#3bb9e8]" : "bg-white/25"}`}
 										/>
 										{autoTrack ? "Auto orbit on" : "Manual position"}
 									</button>
 								) : null}
 							</div>
 							<span
-								className={`font-mono text-xl font-semibold ${observerDb <= 0 ? "text-[#61ffca]" : "text-[#ff6767]"}`}
+								className={`font-mono text-xl font-semibold ${observerDb <= 0 ? "text-[#3bb9e8]" : "text-[#ff3b24]"}`}
 							>
 								{formatDb(observerDb)}
 							</span>
@@ -1347,23 +1374,23 @@ export function WaveLab() {
 						<div className="grid grid-cols-2 border-t border-white/8">
 							<div className="border-r border-white/8 px-5 py-3">
 								<p className="text-[10px] uppercase tracking-wider text-white/35">Source only</p>
-								<p className="mt-1 font-mono text-xs text-[#ffca85]">{magnitude(sourceAtObserver).toFixed(3)} p</p>
+								<p className="mt-1 font-mono text-xs text-[#ffc247]">{magnitude(sourceAtObserver).toFixed(3)} p</p>
 							</div>
 							<div className="px-5 py-3">
 								<p className="text-[10px] uppercase tracking-wider text-white/35">With array</p>
-								<p className="mt-1 font-mono text-xs text-[#61ffca]">{magnitude(totalAtObserver).toFixed(3)} p</p>
+								<p className="mt-1 font-mono text-xs text-[#3bb9e8]">{magnitude(totalAtObserver).toFixed(3)} p</p>
 							</div>
 						</div>
 					</section>
 
-					<section className="rounded-2xl border border-white/10 bg-[#1b1924] p-5">
-						<div className="grid grid-cols-2 rounded-lg border border-white/10 bg-[#15141b] p-1">
+					<section className="rounded-2xl border border-white/10 bg-[#111820] p-5">
+						<div className="grid grid-cols-2 rounded-lg border border-white/10 bg-[#0b0e12] p-1">
 							<button
 								type="button"
 								onClick={() => setControllerMode("human")}
 								className={`rounded-md px-2 py-2 text-[11px] font-medium transition ${
 									controllerMode === "human"
-										? "bg-[#61ffca]/12 text-[#61ffca]"
+										? "bg-[#3bb9e8]/12 text-[#3bb9e8]"
 										: "text-white/40 hover:text-white/70"
 								}`}
 								aria-pressed={controllerMode === "human"}
@@ -1375,7 +1402,7 @@ export function WaveLab() {
 								onClick={() => setControllerMode("boundary")}
 								className={`rounded-md px-2 py-2 text-[11px] font-medium transition ${
 									controllerMode === "boundary"
-										? "bg-[#a277ff]/15 text-[#a277ff]"
+										? "bg-[#2f6df6]/15 text-[#2f6df6]"
 										: "text-white/40 hover:text-white/70"
 								}`}
 								aria-pressed={controllerMode === "boundary"}
@@ -1386,7 +1413,7 @@ export function WaveLab() {
 
 						<div className="flex items-center justify-between gap-4">
 							<div className="mt-5">
-								<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#a277ff]">Controller</p>
+								<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#2f6df6]">Controller</p>
 								<p className="mt-1 text-sm font-medium">
 									{controller.mode === "human"
 										? "Human-aware phase optimizer"
@@ -1396,7 +1423,7 @@ export function WaveLab() {
 							<button
 								type="button"
 								onClick={() => setControlEnabled((value) => !value)}
-								className={`relative h-6 w-11 rounded-full transition ${controlEnabled ? "bg-[#a277ff]" : "bg-white/15"}`}
+								className={`relative h-6 w-11 rounded-full transition ${controlEnabled ? "bg-[#2f6df6]" : "bg-white/15"}`}
 								aria-label="Toggle control speakers"
 								aria-pressed={controlEnabled}
 							>
@@ -1406,7 +1433,7 @@ export function WaveLab() {
 
 						<label className="mt-6 block text-xs text-white/55" htmlFor="frequency">
 							<span className="flex items-center justify-between">
-								Frequency <output className="font-mono text-[#ffca85]">{frequency} Hz</output>
+								Frequency <output className="font-mono text-[#ffc247]">{frequency} Hz</output>
 							</span>
 							<input
 								id="frequency"
@@ -1416,14 +1443,14 @@ export function WaveLab() {
 								step="10"
 								value={frequency}
 								onChange={(event) => setFrequency(Number(event.target.value))}
-								className="mt-3 w-full accent-[#a277ff]"
+								className="mt-3 w-full accent-[#2f6df6]"
 							/>
 						</label>
 
 						{controller.mode === "human" ? (
-							<div className="mt-5 rounded-xl border border-[#61ffca]/15 bg-[#61ffca]/[0.035] p-3.5">
+							<div className="mt-5 rounded-xl border border-[#3bb9e8]/15 bg-[#3bb9e8]/[0.035] p-3.5">
 								<div className="flex items-center justify-between gap-3">
-									<p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#61ffca]">
+									<p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#3bb9e8]">
 										Best controllable bands
 									</p>
 									<span className="font-mono text-[9px] text-white/30">100–1000 Hz scan</span>
@@ -1436,14 +1463,14 @@ export function WaveLab() {
 											onClick={() => setFrequency(candidate.frequency)}
 											className={`rounded-lg border px-2 py-2 text-left transition ${
 												frequency === candidate.frequency
-													? "border-[#61ffca]/40 bg-[#61ffca]/10"
-													: "border-white/8 bg-[#15141b] hover:border-white/20"
+													? "border-[#3bb9e8]/40 bg-[#3bb9e8]/10"
+													: "border-white/8 bg-[#0b0e12] hover:border-white/20"
 											}`}
 										>
 											<span className="block font-mono text-[10px] text-white/75">
 												{index + 1}. {candidate.frequency} Hz
 											</span>
-											<span className="mt-1 block font-mono text-[9px] text-[#61ffca]">
+											<span className="mt-1 block font-mono text-[9px] text-[#3bb9e8]">
 												{formatDb(candidate.bubbleDb)}
 											</span>
 										</button>
@@ -1458,7 +1485,7 @@ export function WaveLab() {
 						<label className="mt-5 block text-xs text-white/55" htmlFor="delay">
 							<span className="flex items-center justify-between">
 								{controller.mode === "human" ? "Reference delay θ" : "Processing delay θ"}{" "}
-								<output className="font-mono text-[#82e2ff]">{delay.toFixed(1)} ms</output>
+								<output className="font-mono text-[#168bd2]">{delay.toFixed(1)} ms</output>
 							</span>
 							<input
 								id="delay"
@@ -1468,7 +1495,7 @@ export function WaveLab() {
 								step="0.1"
 								value={delay}
 								onChange={(event) => setDelay(Number(event.target.value))}
-								className="mt-3 w-full accent-[#82e2ff]"
+								className="mt-3 w-full accent-[#168bd2]"
 							/>
 						</label>
 
@@ -1476,7 +1503,7 @@ export function WaveLab() {
 							<label className="mt-5 block text-xs text-white/55" htmlFor="bubble-radius">
 								<span className="flex items-center justify-between">
 									Quiet bubble radius{" "}
-									<output className="font-mono text-[#61ffca]">{bubbleRadius.toFixed(2)} m</output>
+									<output className="font-mono text-[#3bb9e8]">{bubbleRadius.toFixed(2)} m</output>
 								</span>
 								<input
 									id="bubble-radius"
@@ -1486,14 +1513,14 @@ export function WaveLab() {
 									step="0.05"
 									value={bubbleRadius}
 									onChange={(event) => setBubbleRadius(Number(event.target.value))}
-									className="mt-3 w-full accent-[#61ffca]"
+									className="mt-3 w-full accent-[#3bb9e8]"
 								/>
 							</label>
 						) : (
 							<label className="mt-5 block text-xs text-white/55" htmlFor="boundary">
 								<span className="flex items-center justify-between">
 									Control boundary Γ{" "}
-									<output className="font-mono text-[#f694ff]">{boundaryRadius.toFixed(2)} m</output>
+									<output className="font-mono text-[#ff6a2a]">{boundaryRadius.toFixed(2)} m</output>
 								</span>
 								<input
 									id="boundary"
@@ -1503,31 +1530,31 @@ export function WaveLab() {
 									step="0.05"
 									value={boundaryRadius}
 									onChange={(event) => setBoundaryRadius(Number(event.target.value))}
-									className="mt-3 w-full accent-[#f694ff]"
+									className="mt-3 w-full accent-[#ff6a2a]"
 								/>
 							</label>
 						)}
 					</section>
 
-					<section className="rounded-2xl border border-white/10 bg-[#1b1924] p-5">
+					<section className="rounded-2xl border border-white/10 bg-[#111820] p-5">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#82e2ff]">Array geometry</p>
+								<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#168bd2]">Array geometry</p>
 								<p className="mt-1 text-xs text-white/45">
 									<span data-testid="sensor-count">{sensors.length}</span> sensors · <span data-testid="speaker-count">{speakers.length}</span> speakers
 								</p>
 							</div>
-							<Radio className="size-4 text-[#82e2ff]" />
+							<Radio className="size-4 text-[#168bd2]" />
 						</div>
 						<div className="mt-4 grid grid-cols-3 gap-2">
 							{[4, 8, 16].map((count) => (
 								<button
-									key={count}
+									key={`array-size-${count}`}
 									type="button"
 									onClick={() => reset(count)}
 									className={`rounded-lg border px-2 py-2 font-mono text-[11px] transition ${
 										speakers.length === count && sensors.length === count
-											? "border-[#82e2ff]/35 bg-[#82e2ff]/10 text-[#82e2ff]"
+											? "border-[#168bd2]/35 bg-[#168bd2]/10 text-[#168bd2]"
 											: "border-white/10 text-white/45 hover:border-white/20 hover:text-white"
 									}`}
 								>
@@ -1542,73 +1569,45 @@ export function WaveLab() {
 								setSensors(buildRing(12, 1.55, Math.PI / 12));
 								setSpeakers(ring.filter((_, index) => index < 9));
 							}}
-							className="mt-2 w-full rounded-lg border border-white/10 px-3 py-2 text-left text-[11px] text-white/45 transition hover:border-[#ff6767]/30 hover:text-[#ff6767]"
+							className="mt-2 w-full rounded-lg border border-white/10 px-3 py-2 text-left text-[11px] text-white/45 transition hover:border-[#ff3b24]/30 hover:text-[#ff3b24]"
 						>
 							Make a gap in the array →
 						</button>
 					</section>
-					</aside>
+					</aside> : null}
 			</section>
 			</div>
 
 			<div id="experiment-3" ref={multipleSectionRef} className="scroll-mt-14 border-b border-white/10">
 				<ExperimentHeading
 					number="3"
-					eyebrow="Shared degrees of freedom"
-					title="Can the same array protect three moving people?"
-					body="Add every person’s bubble to one objective. At low frequencies, many sample constraints share the same few spatial modes."
-					color="#f694ff"
+					title="The same idea generalizes to multiple people."
+					body="Each additional person contributes another tracked quiet region to the same optimization. The array shares its available degrees of freedom across all of them."
 				/>
-				<MultiHumanLab key={multiResetKey} running={running} active={multipleActive} />
+				<MultiHumanLab key={`multi-${multiResetKey}`} running={running} active={multipleActive} showControls={showControls} />
 			</div>
 
 			<div id="experiment-4" ref={obstacleSectionRef} className="scroll-mt-14 border-b border-white/10">
 				<ExperimentHeading
 					number="4"
-					eyebrow="Model mismatch · two buildings"
-					title="What happens when the controller uses the wrong H?"
-					body="Keep the open-field algorithm, but add two small reflective squares beside a wide direct path. The wrong phases can make the listener’s level increase."
-					color="#ff6767"
+					title="Cancellation also generalizes around known obstacles."
+					body="Watch one controller move from a clean open field to a reflective city scene: obstacles break its assumptions, microphone probes reveal the missing paths, and the same array is re-solved against the measured environment."
 				/>
-				<ObstacleLab key={obstacleResetKey} running={running} active={obstacleActive} mode="open" />
+				<ObstacleLab key={`obstacle-${obstacleResetKey}`} running={running} active={obstacleActive} mode="sequence" showControls={showControls} />
 			</div>
 
-			<div id="experiment-5" ref={estimationSectionRef} className="scroll-mt-14 border-b border-white/10">
+			<div id="experiment-5" ref={chainsawSectionRef} className="scroll-mt-14 border-b border-white/10">
 				<ExperimentHeading
 					number="5"
-					eyebrow="Sparse acoustic observations"
-					title="Can a moving microphone estimate the missing H?"
-					body="Fly a microphone through four nearby points. Orthogonal speaker probes measure one row of the transfer matrix at each stop, while the camera supplies scene geometry."
-					color="#82e2ff"
+					title="Real sound must be cancelled frequency by frequency."
+					body="A chainsaw is not one clean tone. Its repeating engine cycle contains many harmonics, and its blade noise is broadband. Each narrow frequency band needs its own cancellation amplitude and phase."
 				/>
-				<HEstimationLab key={estimationResetKey} running={running} active={estimationActive} />
+				<ChainsawLab key={`chainsaw-${chainsawResetKey}`} running={running} active={chainsawActive} showControls={showControls} />
 			</div>
 
-			<div id="experiment-6" ref={recoverySectionRef} className="scroll-mt-14 border-b border-white/10">
-				<ExperimentHeading
-					number="6"
-					eyebrow="Re-optimized with estimated H"
-					title="The same speaker ring cancels the reflected field."
-					body="Use the camera-conditioned transfer estimate instead of free space, then solve the speaker phases again. The obstacles stay; the model mismatch does not."
-					color="#61ffca"
-				/>
-				<ObstacleLab key={recoveryResetKey} running={running} active={recoveryActive} mode="estimated" />
-			</div>
-
-			<div id="experiment-7" ref={chainsawSectionRef} className="scroll-mt-14 border-b border-white/10">
-				<ExperimentHeading
-					number="7"
-					eyebrow="Measured waveform · broadband source"
-					title="Replace the sine wave with an actual chainsaw recording."
-					body="Extract the repeating engine cycle and its first twelve harmonics, optimize every frequency independently, then account for the non-periodic blade noise the harmonic model cannot cancel."
-					color="#ffca85"
-				/>
-				<ChainsawLab key={chainsawResetKey} running={running} active={chainsawActive} />
-			</div>
-
-			<section className="border-t border-white/10 px-5 py-16 sm:px-8 sm:py-20">
+			{showControls ? <section className="border-t border-white/10 px-5 py-16 sm:px-8 sm:py-20">
 				<div className="mx-auto max-w-5xl">
-					<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#ffca85]">
+					<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#ffc247]">
 						<CircleHelp className="size-3.5" /> The mathematical answer
 					</div>
 					<h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -1618,24 +1617,24 @@ export function WaveLab() {
 						An ideal continuous shell can cancel an ideal wave outside it. What fails in practice is the finite, delayed, broadband version: a handful of point speakers cannot usually satisfy an infinite boundary of constraints at once.
 					</p>
 
-					<div className="mt-10 rounded-2xl border border-[#61ffca]/15 bg-[#61ffca]/[0.035] p-5 sm:p-7">
+					<div className="mt-10 rounded-2xl border border-[#3bb9e8]/15 bg-[#3bb9e8]/[0.035] p-5 sm:p-7">
 						<div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
 							<div>
-								<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#61ffca]">
+								<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#3bb9e8]">
 									Human-aware objective
 								</p>
 								<h3 className="mt-3 text-xl font-semibold">Optimize a region, not one fragile point.</h3>
 								<p className="mt-3 text-sm leading-6 text-white/50">
-									The green disk is sampled at the center and across three rings. The controller minimizes their combined pressure while lightly penalizing speaker effort and disturbance on the red guard ring.
+									The blue disk is sampled at the center and across three rings. The controller minimizes their combined pressure while lightly penalizing speaker effort and disturbance on the red guard ring.
 								</p>
 							</div>
-							<div className="overflow-x-auto rounded-xl border border-white/8 bg-[#15141b] p-4 font-mono text-xs leading-7 text-white/65">
-								<span className="text-[#61ffca]">w*₍f₎</span> = arg min Σ<span className="text-white/35">x∈bubble</span>
+							<div className="overflow-x-auto rounded-xl border border-white/8 bg-[#0b0e12] p-4 font-mono text-xs leading-7 text-white/65">
+								<span className="text-[#3bb9e8]">w*₍f₎</span> = arg min Σ<span className="text-white/35">x∈bubble</span>
 								 |d₍f₎(x) + H₍f₎(x)w₍f₎|²
 								<br />
 								<span className="text-white/35">+ λ‖w₍f₎‖² + guard penalty</span>
 								<br />
-								<span className="text-[#ffca85]">anti-frequency f = source frequency f</span>
+								<span className="text-[#ffc247]">anti-frequency f = source frequency f</span>
 							</div>
 						</div>
 						<p className="mt-5 border-t border-white/8 pt-5 text-xs leading-5 text-white/40">
@@ -1644,28 +1643,28 @@ export function WaveLab() {
 					</div>
 
 					<div className="mt-4 grid gap-4 lg:grid-cols-2">
-						<div className="rounded-2xl border border-white/10 bg-[#100f15] p-5 sm:p-7">
+						<div className="rounded-2xl border border-white/10 bg-[#070a0d] p-5 sm:p-7">
 							<div className="flex items-center gap-2 text-sm font-medium">
-								<Activity className="size-4 text-[#a277ff]" /> Finite point sources
+								<Activity className="size-4 text-[#2f6df6]" /> Finite point sources
 							</div>
-							<div className="mt-5 overflow-x-auto rounded-xl border border-white/8 bg-[#15141b] p-4 font-mono text-xs leading-7 text-white/65">
-								<span className="text-[#edecee]">p(x)</span> = q₀ G(x,x₀) + <span className="text-[#a277ff]">Σ aⱼ G(x,xⱼ)</span>
+							<div className="mt-5 overflow-x-auto rounded-xl border border-white/8 bg-[#0b0e12] p-4 font-mono text-xs leading-7 text-white/65">
+								<span className="text-[#f2eee4]">p(x)</span> = q₀ G(x,x₀) + <span className="text-[#2f6df6]">Σ aⱼ G(x,xⱼ)</span>
 								<br />
-								<span className="text-[#82e2ff]">p(xₘ) ≈ 0</span>, m = 1…M
+								<span className="text-[#168bd2]">p(xₘ) ≈ 0</span>, m = 1…M
 							</div>
 							<p className="mt-5 text-sm leading-6 text-white/50">
 								Our N speaker gains are fitted to M sampled points on Γ. Exact silence outside would require p = 0 at every point of Γ—infinitely many conditions. A finite displaced array generally leaves angular modes uncancelled.
 							</p>
 						</div>
 
-						<div className="rounded-2xl border border-[#61ffca]/15 bg-[#100f15] p-5 sm:p-7">
+						<div className="rounded-2xl border border-[#3bb9e8]/15 bg-[#070a0d] p-5 sm:p-7">
 							<div className="flex items-center gap-2 text-sm font-medium">
-								<Sparkles className="size-4 text-[#61ffca]" /> The ideal exception
+								<Sparkles className="size-4 text-[#3bb9e8]" /> The ideal exception
 							</div>
-							<div className="mt-5 overflow-x-auto rounded-xl border border-white/8 bg-[#15141b] p-4 font-mono text-xs leading-7 text-white/65">
-								<span className="text-[#edecee]">∫ring G(x,y) σ ds</span>
+							<div className="mt-5 overflow-x-auto rounded-xl border border-white/8 bg-[#0b0e12] p-4 font-mono text-xs leading-7 text-white/65">
+								<span className="text-[#f2eee4]">∫ring G(x,y) σ ds</span>
 								<br />
-								= C · <span className="text-[#61ffca]">J₀(ka) H₀⁽¹⁾(kr)</span>, r &gt; a
+								= C · <span className="text-[#3bb9e8]">J₀(ka) H₀⁽¹⁾(kr)</span>, r &gt; a
 							</div>
 							<p className="mt-5 text-sm leading-6 text-white/50">
 								For a centered, single-frequency radial source, a continuous ring of in-phase monopoles produces the same exterior radial shape. Choose its density with the opposite coefficient and the outside field is exactly zero (except at special J₀ zeros).
@@ -1673,61 +1672,52 @@ export function WaveLab() {
 						</div>
 					</div>
 
-					<div className="mt-4 rounded-2xl border border-[#82e2ff]/15 bg-[#82e2ff]/[0.035] p-5 sm:p-7">
-						<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#82e2ff]">Why θ matters</p>
+					<div className="mt-4 rounded-2xl border border-[#168bd2]/15 bg-[#168bd2]/[0.035] p-5 sm:p-7">
+						<p className="font-mono text-[10px] uppercase tracking-[0.17em] text-[#168bd2]">Why θ matters</p>
 						<p className="mt-3 max-w-4xl text-sm leading-6 text-white/55">
 							At one steady pure tone, the human-aware controller can compensate a fixed reference delay with complex phase weights. Exterior-ring mode intentionally uses only real gains on delayed sensor copies, so θ remains visible there. For an unpredictable broadband saw waveform, causality is stricter: the sensor must hear the disturbance early enough that the secondary wave can still reach the listener at the same instant.
 						</p>
 					</div>
 				</div>
-			</section>
+			</section> : null}
 
-			<div id="experiment-8" className="scroll-mt-14 border-t border-white/10">
+			<div id="experiment-6" className="scroll-mt-14 border-t border-white/10">
 				<ExperimentHeading
-					number="8"
-					eyebrow="What the literature actually supports"
-					title="A quiet café table is plausible. A silent city block is not."
-					body="The strongest evidence converges on a local, tracked, low- and mid-frequency quiet zone—not global cancellation everywhere outside the construction site."
-					color="#82e2ff"
+					number="6"
+					title="The practical target is a quieter place—not silence everywhere."
+					body="The evidence supports local, tracked reduction at low and mid frequencies. A credible first prototype should aim for a noticeable 5–10 dB improvement around seated listeners, not a silent city block."
 				/>
 
 				<section className="px-5 pb-20 sm:px-8">
 					<div className="mx-auto max-w-[1500px]">
 						<div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-							<div className="rounded-3xl border border-[#61ffca]/25 bg-[#61ffca]/[0.055] p-6 sm:p-8">
-								<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#61ffca]">
+							<div className="rounded-3xl border border-[#3bb9e8]/25 bg-[#3bb9e8]/[0.055] p-6 sm:p-8">
+								<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#3bb9e8]">
 									<CheckCircle2 className="size-4" /> Our conclusion
 								</div>
 								<h3 className="mt-4 max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl">
 									Doable enough to prototype for people sitting at a café.
 								</h3>
 								<p className="mt-4 max-w-3xl text-sm leading-7 text-white/60 sm:text-base">
-									A source-side speaker array, a clean reference signal, camera tracking, and microphones near the listeners make a seated table unusually favorable. A credible first target is a <span className="text-[#61ffca]">5–10 dB reduction in low- and mid-frequency sound at the ears</span>. That would be clearly noticeable, but it would not erase the high-frequency blade hiss or make the whole street silent.
+									A source-side speaker array, a clean reference signal, camera tracking, and microphones near the listeners make a seated table unusually favorable. A credible first target is a <span className="text-[#3bb9e8]">5–10 dB reduction in low- and mid-frequency sound at the ears</span>. That would be clearly noticeable, but it would not erase the high-frequency blade hiss or make the whole street silent.
 								</p>
-								<div className="mt-6 flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-[0.12em]">
-									{["Seated target", "Two-ear objective", "Adaptive H(f)", "Source reference", "Bounded spill"].map((label) => (
-										<span key={label} className="rounded-full border border-[#61ffca]/20 bg-[#15141b]/60 px-3 py-1.5 text-[#61ffca]/80">
-											{label}
-										</span>
-									))}
-								</div>
 							</div>
 
-							<div className="rounded-3xl border border-[#ff6767]/20 bg-[#ff6767]/[0.04] p-6 sm:p-8">
-								<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#ff6767]">
+							<div className="rounded-3xl border border-[#ff3b24]/20 bg-[#ff3b24]/[0.04] p-6 sm:p-8">
+								<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#ff3b24]">
 									<TriangleAlert className="size-4" /> What is not yet proven
 								</div>
 								<ul className="mt-5 space-y-4 text-sm leading-6 text-white/55">
-									<li className="border-l border-[#ff6767]/30 pl-4">No paper below demonstrates this complete construction-site-to-café system end to end.</li>
-									<li className="border-l border-[#ff6767]/30 pl-4">Quiet zones shrink with wavelength, so high-frequency saw noise is much harder to control around a moving head.</li>
-									<li className="border-l border-[#ff6767]/30 pl-4">Wind, safety limits, changing machinery, reflections, and listener motion all consume the array’s finite control authority.</li>
+									<li className="border-l border-[#ff3b24]/30 pl-4">No paper below demonstrates this complete construction-site-to-café system end to end.</li>
+									<li className="border-l border-[#ff3b24]/30 pl-4">Quiet zones shrink with wavelength, so high-frequency saw noise is much harder to control around a moving head.</li>
+									<li className="border-l border-[#ff3b24]/30 pl-4">Wind, safety limits, changing machinery, reflections, and listener motion all consume the array’s finite control authority.</li>
 								</ul>
 							</div>
 						</div>
 
-						<div className="mt-10 flex items-end justify-between gap-4">
+						{showControls ? <><div className="mt-10 flex items-end justify-between gap-4">
 							<div>
-								<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#82e2ff]">
+								<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#168bd2]">
 									<BookOpen className="size-4" /> Selected literature
 								</div>
 								<h3 className="mt-3 text-2xl font-semibold tracking-tight">Four results that bound the claim.</h3>
@@ -1747,7 +1737,7 @@ export function WaveLab() {
 									copy: "A moving quiet zone followed the listener in an idealized anechoic experiment. The source was single and directly observed.",
 									authors: "Elliott, Jung & Cheer · 2018",
 									href: "https://www.nature.com/articles/s41598-018-23531-y",
-									color: "#61ffca",
+									color: "#3bb9e8",
 								},
 								{
 									type: "OUTDOOR FIELD TEST",
@@ -1757,7 +1747,7 @@ export function WaveLab() {
 									copy: "A real outdoor active barrier reduced a stationary, nearly tonal source. Useful evidence, but narrower than a broadband chainsaw.",
 									authors: "Borchi et al. · 2016",
 									href: "https://openaccess.inaf.it/entities/publication/456d7120-4b0f-47bd-bfa9-40f04f4a8125",
-									color: "#82e2ff",
+									color: "#168bd2",
 								},
 								{
 									type: "CONSTRUCTION · SIMULATION",
@@ -1767,7 +1757,7 @@ export function WaveLab() {
 									copy: "A causal controller handled delay and nonlinearities across recorded construction sounds in realistic simulation—not a field deployment.",
 									authors: "Mostafavi & Cha · 2023",
 									href: "https://www.sciencedirect.com/science/article/pii/S0926580523001450",
-									color: "#ffca85",
+									color: "#ffc247",
 								},
 								{
 									type: "LIMIT · BROADBAND MOTION",
@@ -1777,7 +1767,7 @@ export function WaveLab() {
 									copy: "Virtual sensing did not maintain a 10 dB zone for every broadband disturbance and head movement. Robustness is the open problem.",
 									authors: "Buck, Jukkert & Sachau · 2018",
 									href: "https://pubmed.ncbi.nlm.nih.gov/29857731/",
-									color: "#ff6767",
+									color: "#ff3b24",
 								},
 							].map((paper) => (
 								<a
@@ -1785,7 +1775,7 @@ export function WaveLab() {
 									href={paper.href}
 									target="_blank"
 									rel="noreferrer"
-									className="group flex min-h-[330px] flex-col rounded-2xl border border-white/10 bg-[#100f15] p-5 transition hover:-translate-y-0.5 hover:border-white/20"
+									className="group flex min-h-[330px] flex-col rounded-2xl border border-white/10 bg-[#070a0d] p-5 transition hover:-translate-y-0.5 hover:border-white/20"
 								>
 									<div className="flex items-center justify-between gap-3">
 										<span className="font-mono text-[9px] uppercase tracking-[0.15em]" style={{ color: paper.color }}>{paper.type}</span>
@@ -1801,24 +1791,23 @@ export function WaveLab() {
 						</div>
 
 						<p className="mt-5 text-xs leading-5 text-white/35">
-							Also relevant: <a href="https://www.nature.com/articles/s41598-020-77614-w" target="_blank" rel="noreferrer" className="text-[#82e2ff] underline decoration-[#82e2ff]/30 underline-offset-4 hover:decoration-[#82e2ff]">Xiao, Qiu & Halkon (2020)</a> demonstrated ultra-broadband local active control using remote acoustic sensing. Together, these papers support building the experiment—not claiming the product already exists.
+							Also relevant: <a href="https://www.nature.com/articles/s41598-020-77614-w" target="_blank" rel="noreferrer" className="text-[#168bd2] underline decoration-[#168bd2]/30 underline-offset-4 hover:decoration-[#168bd2]">Xiao, Qiu & Halkon (2020)</a> demonstrated ultra-broadband local active control using remote acoustic sensing. Together, these papers support building the experiment—not claiming the product already exists.
 						</p>
+						</> : null}
 					</div>
 				</section>
 			</div>
 
-			<div id="experiment-9" className="scroll-mt-14 border-t border-white/10">
+			<div id="experiment-7" className="scroll-mt-14 border-t border-white/10">
 				<ExperimentHeading
-					number="9"
-					eyebrow="From apparatus to public space"
-					title="Surround the noise. Steer the benefit toward people."
-					body="The first prototype is an instrumented perimeter around a repeatable source. The product outcome is more modest and more human: a quieter pocket where people are trying to live."
-					color="#61ffca"
+					number="7"
+					title="Build a measured perimeter, then steer the benefit toward people."
+					body="The first system is an instrumented ring around one repeatable source. Its job is not to erase the whole environment, but to create a quieter pocket where people are trying to live."
 				/>
 
 				<section className="px-5 pb-24 sm:px-8 sm:pb-32">
 					<div className="mx-auto max-w-[1500px]">
-						<figure className="relative mb-5 overflow-hidden rounded-3xl border border-[#82e2ff]/15 bg-[#08090b]">
+						<figure className="relative mb-5 overflow-hidden rounded-3xl border border-[#168bd2]/15 bg-[#050708]">
 							<div className="relative aspect-[16/9] min-h-[430px] overflow-hidden sm:min-h-0">
 								<Image
 									src="/images/sound-lab/speaker-node-hero-v2.png"
@@ -1830,7 +1819,7 @@ export function WaveLab() {
 								/>
 								<div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/12 to-transparent" />
 								<figcaption className="absolute inset-y-0 left-0 flex max-w-[48rem] flex-col justify-center p-7 sm:p-12 lg:p-16">
-									<p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#82e2ff]">The array node</p>
+									<p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#168bd2]">The array node</p>
 									<h3 className="mt-4 max-w-lg text-3xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
 										One pole. One speaker. One local model of the sound field.
 									</h3>
@@ -1842,7 +1831,7 @@ export function WaveLab() {
 						</figure>
 
 						<div className="grid gap-5 lg:grid-cols-2">
-							<figure className="overflow-hidden rounded-3xl border border-white/10 bg-[#100f15]">
+							<figure className="overflow-hidden rounded-3xl border border-white/10 bg-[#070a0d]">
 								<div className="relative aspect-[16/10] overflow-hidden border-b border-white/10">
 									<Image
 										src="/images/sound-lab/construction-speaker-array.png"
@@ -1851,8 +1840,8 @@ export function WaveLab() {
 										sizes="(min-width: 1024px) 50vw, 100vw"
 										className="object-cover"
 									/>
-									<div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#100f15] to-transparent" />
-									<div className="absolute bottom-5 left-5 flex items-center gap-2 rounded-full border border-[#ffca85]/25 bg-[#15141b]/85 px-3 py-2 font-mono text-[9px] uppercase tracking-[0.14em] text-[#ffca85] backdrop-blur-md">
+									<div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#070a0d] to-transparent" />
+									<div className="absolute bottom-5 left-5 flex items-center gap-2 rounded-full border border-[#ffc247]/25 bg-[#0b0e12]/85 px-3 py-2 font-mono text-[9px] uppercase tracking-[0.14em] text-[#ffc247] backdrop-blur-md">
 										<HardHat className="size-3.5" /> 01 · source-side prototype
 									</div>
 								</div>
@@ -1864,7 +1853,7 @@ export function WaveLab() {
 								</figcaption>
 							</figure>
 
-							<figure className="overflow-hidden rounded-3xl border border-[#61ffca]/15 bg-[#100f15]">
+							<figure className="overflow-hidden rounded-3xl border border-[#3bb9e8]/15 bg-[#070a0d]">
 								<div className="relative aspect-[16/10] overflow-hidden border-b border-white/10">
 									<Image
 										src="/images/sound-lab/cafe-quiet-zone.png"
@@ -1873,8 +1862,8 @@ export function WaveLab() {
 										sizes="(min-width: 1024px) 50vw, 100vw"
 										className="object-cover"
 									/>
-									<div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#100f15] to-transparent" />
-									<div className="absolute bottom-5 left-5 flex items-center gap-2 rounded-full border border-[#61ffca]/25 bg-[#15141b]/85 px-3 py-2 font-mono text-[9px] uppercase tracking-[0.14em] text-[#61ffca] backdrop-blur-md">
+									<div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#070a0d] to-transparent" />
+									<div className="absolute bottom-5 left-5 flex items-center gap-2 rounded-full border border-[#3bb9e8]/25 bg-[#0b0e12]/85 px-3 py-2 font-mono text-[9px] uppercase tracking-[0.14em] text-[#3bb9e8] backdrop-blur-md">
 										<Coffee className="size-3.5" /> 02 · human outcome
 									</div>
 								</div>
@@ -1887,10 +1876,10 @@ export function WaveLab() {
 							</figure>
 						</div>
 
-						<div className="mt-6 rounded-3xl border border-[#a277ff]/20 bg-gradient-to-r from-[#a277ff]/[0.07] via-[#61ffca]/[0.045] to-transparent p-7 sm:p-10">
-							<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a277ff]">The product thesis</p>
+						<div className="mt-6 rounded-3xl border border-[#2f6df6]/20 bg-gradient-to-r from-[#2f6df6]/[0.07] via-[#3bb9e8]/[0.045] to-transparent p-7 sm:p-10">
+							<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#2f6df6]">The product thesis</p>
 							<p className="mt-4 max-w-5xl text-2xl font-semibold leading-tight tracking-tight sm:text-4xl">
-								Not silence everywhere. <span className="text-[#61ffca]">A quieter place exactly where someone wants to sit.</span>
+								Not silence everywhere. <span className="text-[#3bb9e8]">A quieter place exactly where someone wants to sit.</span>
 							</p>
 							<p className="mt-5 text-xs leading-5 text-white/35">Concept visualizations, not photographs of field-tested hardware.</p>
 						</div>
