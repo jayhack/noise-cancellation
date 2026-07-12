@@ -1,0 +1,17 @@
+outputs/
+inputs/
+__pycache__/
+*.pyc
+
+# Model weights and heavy generated artifacts
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.ply
+*.splat
+*.ksplat
+*.spz
+*.npy
+*.npz
