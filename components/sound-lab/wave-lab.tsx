@@ -4,6 +4,7 @@ import {
 	Activity,
 	CircleHelp,
 	Gauge,
+	Github,
 	Mic2,
 	MousePointer2,
 	Pause,
@@ -1179,6 +1180,16 @@ export function WaveLab() {
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
+						<a
+							href="https://github.com/jayhack/noise-cancellation"
+							target="_blank"
+							rel="noreferrer"
+							className="grid size-9 place-items-center rounded-lg border border-white/10 text-white/55 transition hover:border-white/20 hover:text-white"
+							aria-label="View source on GitHub"
+							title="View source on GitHub"
+						>
+							<Github className="size-4" />
+						</a>
 						<button
 							type="button"
 							onClick={() => setShowControls((value) => !value)}
