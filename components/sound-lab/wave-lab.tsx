@@ -2,13 +2,8 @@
 
 import {
 	Activity,
-	ArrowUpRight,
-	BookOpen,
-	CheckCircle2,
 	CircleHelp,
-	Coffee,
 	Gauge,
-	HardHat,
 	Mic2,
 	MousePointer2,
 	Pause,
@@ -18,11 +13,9 @@ import {
 	Settings2,
 	Sparkles,
 	Trash2,
-	TriangleAlert,
 	Volume2,
 	Waves,
 } from "lucide-react";
-import Image from "next/image";
 import {
 	type PointerEvent as ReactPointerEvent,
 	useCallback,
@@ -630,18 +623,15 @@ function useSectionActive(ref: { current: HTMLElement | null }) {
 }
 
 function ExperimentHeading({
-	number,
 	title,
 	body,
 }: {
-	number: string;
 	title: string;
 	body: string;
 }) {
 	return (
 		<div className="mx-auto max-w-[1500px] px-5 pb-3 pt-16 sm:px-8 sm:pt-24">
-			<p className="font-mono text-sm text-[#168bd2]">{number.padStart(2, "0")}</p>
-			<h2 className="mt-5 max-w-5xl text-2xl font-semibold leading-[1.08] tracking-[-0.025em] sm:text-3xl lg:text-4xl">
+			<h2 className="max-w-5xl text-2xl font-semibold leading-[1.08] tracking-[-0.025em] sm:text-3xl lg:text-4xl">
 				{title}
 			</h2>
 			<p className="mt-6 max-w-4xl text-lg leading-8 text-white/55 sm:text-xl sm:leading-9">
@@ -1184,7 +1174,7 @@ export function WaveLab() {
 								Active sound control lab
 							</h1>
 							<p className="font-mono text-[10px] uppercase tracking-[0.15em] text-white/40">
-								Seven statements · scroll to understand
+								Interactive explanation
 							</p>
 						</div>
 					</div>
@@ -1224,31 +1214,8 @@ export function WaveLab() {
 				</div>
 			</header>
 
-			<nav className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0e12]/92 px-4 py-2 backdrop-blur-xl sm:px-6" aria-label="Experiment sequence">
-				<div className="mx-auto grid max-w-[1500px] grid-cols-2 gap-1 sm:grid-cols-4 xl:grid-cols-7">
-					{[
-						["#experiment-1", "01", "A shell works"],
-						["#experiment-2", "02", "Track one person"],
-						["#experiment-3", "03", "Protect many"],
-						["#experiment-4", "04", "Handle obstacles"],
-						["#experiment-5", "05", "Use real sound"],
-						["#experiment-6", "06", "Set expectations"],
-						["#experiment-7", "07", "Build the system"],
-					].map(([href, number, label]) => (
-						<a
-							key={href}
-							href={href}
-							className="rounded-lg border border-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-white/40 transition hover:border-white/10 hover:bg-white/[0.035] hover:text-white/75"
-						>
-							<span className="mr-2 text-[#168bd2]">{number}</span>{label}
-						</a>
-					))}
-				</div>
-			</nav>
-
 			<div id="experiment-1" ref={idealSectionRef} className="scroll-mt-14 border-b border-white/10">
 				<ExperimentHeading
-					number="1"
 					title="Sound cancellation is possible with a continuous shell of speakers."
 					body="A perfectly continuous, zero-delay ring can emit an equal and opposite wave. Outside the shell, the two fields cancel; inside, the original sound remains."
 				/>
@@ -1257,7 +1224,6 @@ export function WaveLab() {
 
 			<div id="experiment-2" ref={discreteSectionRef} className="scroll-mt-14 border-b border-white/10">
 				<ExperimentHeading
-					number="2"
 					title="Discrete speakers can track and cancel sound for a moving pedestrian."
 					body="A finite array cannot silence the whole exterior field, but it can steer a local quiet region toward a tracked person and continuously recompute the speaker phases as they move."
 				/>
@@ -1580,7 +1546,6 @@ export function WaveLab() {
 
 			<div id="experiment-3" ref={multipleSectionRef} className="scroll-mt-14 border-b border-white/10">
 				<ExperimentHeading
-					number="3"
 					title="The same idea generalizes to multiple people."
 					body="Each additional person contributes another tracked quiet region to the same optimization. The array shares its available degrees of freedom across all of them."
 				/>
@@ -1589,7 +1554,6 @@ export function WaveLab() {
 
 			<div id="experiment-4" ref={obstacleSectionRef} className="scroll-mt-14 border-b border-white/10">
 				<ExperimentHeading
-					number="4"
 					title="Cancellation also generalizes around known obstacles."
 					body="Watch one controller move from a clean open field to a reflective city scene: obstacles break its assumptions, microphone probes reveal the missing paths, and the same array is re-solved against the measured environment."
 				/>
@@ -1598,7 +1562,6 @@ export function WaveLab() {
 
 			<div id="experiment-5" ref={chainsawSectionRef} className="scroll-mt-14 border-b border-white/10">
 				<ExperimentHeading
-					number="5"
 					title="Real sound must be cancelled frequency by frequency."
 					body="A chainsaw is not one clean tone. Its repeating engine cycle contains many harmonics, and its blade noise is broadband. Each narrow frequency band needs its own cancellation amplitude and phase."
 				/>
@@ -1681,211 +1644,6 @@ export function WaveLab() {
 				</div>
 			</section> : null}
 
-			<div id="experiment-6" className="scroll-mt-14 border-t border-white/10">
-				<ExperimentHeading
-					number="6"
-					title="The practical target is a quieter place—not silence everywhere."
-					body="The evidence supports local, tracked reduction at low and mid frequencies. A credible first prototype should aim for a noticeable 5–10 dB improvement around seated listeners, not a silent city block."
-				/>
-
-				<section className="px-5 pb-20 sm:px-8">
-					<div className="mx-auto max-w-[1500px]">
-						<div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-							<div className="rounded-3xl border border-[#3bb9e8]/25 bg-[#3bb9e8]/[0.055] p-6 sm:p-8">
-								<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#3bb9e8]">
-									<CheckCircle2 className="size-4" /> Our conclusion
-								</div>
-								<h3 className="mt-4 max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl">
-									Doable enough to prototype for people sitting at a café.
-								</h3>
-								<p className="mt-4 max-w-3xl text-sm leading-7 text-white/60 sm:text-base">
-									A source-side speaker array, a clean reference signal, camera tracking, and microphones near the listeners make a seated table unusually favorable. A credible first target is a <span className="text-[#3bb9e8]">5–10 dB reduction in low- and mid-frequency sound at the ears</span>. That would be clearly noticeable, but it would not erase the high-frequency blade hiss or make the whole street silent.
-								</p>
-							</div>
-
-							<div className="rounded-3xl border border-[#ff3b24]/20 bg-[#ff3b24]/[0.04] p-6 sm:p-8">
-								<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#ff3b24]">
-									<TriangleAlert className="size-4" /> What is not yet proven
-								</div>
-								<ul className="mt-5 space-y-4 text-sm leading-6 text-white/55">
-									<li className="border-l border-[#ff3b24]/30 pl-4">No paper below demonstrates this complete construction-site-to-café system end to end.</li>
-									<li className="border-l border-[#ff3b24]/30 pl-4">Quiet zones shrink with wavelength, so high-frequency saw noise is much harder to control around a moving head.</li>
-									<li className="border-l border-[#ff3b24]/30 pl-4">Wind, safety limits, changing machinery, reflections, and listener motion all consume the array’s finite control authority.</li>
-								</ul>
-							</div>
-						</div>
-
-						{showControls ? <><div className="mt-10 flex items-end justify-between gap-4">
-							<div>
-								<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#168bd2]">
-									<BookOpen className="size-4" /> Selected literature
-								</div>
-								<h3 className="mt-3 text-2xl font-semibold tracking-tight">Four results that bound the claim.</h3>
-							</div>
-							<p className="hidden max-w-sm text-right text-xs leading-5 text-white/35 sm:block">
-								Lab demonstrations establish the mechanism. Field and simulation studies establish the scale. A negative result keeps the conclusion honest.
-							</p>
-						</div>
-
-						<div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-							{[
-								{
-									type: "LAB · HEAD TRACKING",
-									result: "≈20 dB",
-									range: "up to 1 kHz",
-									title: "Remote microphone technique with optical head tracking",
-									copy: "A moving quiet zone followed the listener in an idealized anechoic experiment. The source was single and directly observed.",
-									authors: "Elliott, Jung & Cheer · 2018",
-									href: "https://www.nature.com/articles/s41598-018-23531-y",
-									color: "#3bb9e8",
-								},
-								{
-									type: "OUTDOOR FIELD TEST",
-									result: "up to 15 dB",
-									range: "below 300 Hz",
-									title: "Active noise barrier in an urban outdoor environment",
-									copy: "A real outdoor active barrier reduced a stationary, nearly tonal source. Useful evidence, but narrower than a broadband chainsaw.",
-									authors: "Borchi et al. · 2016",
-									href: "https://openaccess.inaf.it/entities/publication/456d7120-4b0f-47bd-bfa9-40f04f4a8125",
-									color: "#168bd2",
-								},
-								{
-									type: "CONSTRUCTION · SIMULATION",
-									result: "8.3 dB",
-									range: "17 site noises",
-									title: "Deep active noise control for construction sites",
-									copy: "A causal controller handled delay and nonlinearities across recorded construction sounds in realistic simulation—not a field deployment.",
-									authors: "Mostafavi & Cha · 2023",
-									href: "https://www.sciencedirect.com/science/article/pii/S0926580523001450",
-									color: "#ffc247",
-								},
-								{
-									type: "LIMIT · BROADBAND MOTION",
-									result: "<10 dB",
-									range: "in some cases",
-									title: "Active headrest with nonstationary disturbances",
-									copy: "Virtual sensing did not maintain a 10 dB zone for every broadband disturbance and head movement. Robustness is the open problem.",
-									authors: "Buck, Jukkert & Sachau · 2018",
-									href: "https://pubmed.ncbi.nlm.nih.gov/29857731/",
-									color: "#ff3b24",
-								},
-							].map((paper) => (
-								<a
-									key={paper.href}
-									href={paper.href}
-									target="_blank"
-									rel="noreferrer"
-									className="group flex min-h-[330px] flex-col rounded-2xl border border-white/10 bg-[#070a0d] p-5 transition hover:-translate-y-0.5 hover:border-white/20"
-								>
-									<div className="flex items-center justify-between gap-3">
-										<span className="font-mono text-[9px] uppercase tracking-[0.15em]" style={{ color: paper.color }}>{paper.type}</span>
-										<ArrowUpRight className="size-3.5 text-white/25 transition group-hover:text-white/65" />
-									</div>
-									<div className="mt-6 font-mono text-3xl font-semibold tracking-tight" style={{ color: paper.color }}>{paper.result}</div>
-									<div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-white/30">{paper.range}</div>
-									<h4 className="mt-6 text-sm font-semibold leading-5 text-white/85">{paper.title}</h4>
-									<p className="mt-3 text-xs leading-5 text-white/45">{paper.copy}</p>
-									<p className="mt-auto border-t border-white/8 pt-4 font-mono text-[9px] uppercase tracking-[0.1em] text-white/28">{paper.authors}</p>
-								</a>
-							))}
-						</div>
-
-						<p className="mt-5 text-xs leading-5 text-white/35">
-							Also relevant: <a href="https://www.nature.com/articles/s41598-020-77614-w" target="_blank" rel="noreferrer" className="text-[#168bd2] underline decoration-[#168bd2]/30 underline-offset-4 hover:decoration-[#168bd2]">Xiao, Qiu & Halkon (2020)</a> demonstrated ultra-broadband local active control using remote acoustic sensing. Together, these papers support building the experiment—not claiming the product already exists.
-						</p>
-						</> : null}
-					</div>
-				</section>
-			</div>
-
-			<div id="experiment-7" className="scroll-mt-14 border-t border-white/10">
-				<ExperimentHeading
-					number="7"
-					title="Build a measured perimeter, then steer the benefit toward people."
-					body="The first system is an instrumented ring around one repeatable source. Its job is not to erase the whole environment, but to create a quieter pocket where people are trying to live."
-				/>
-
-				<section className="px-5 pb-24 sm:px-8 sm:pb-32">
-					<div className="mx-auto max-w-[1500px]">
-						<figure className="relative mb-5 overflow-hidden rounded-3xl border border-[#168bd2]/15 bg-[#050708]">
-							<div className="relative aspect-[16/9] min-h-[430px] overflow-hidden sm:min-h-0">
-								<Image
-									src="/images/sound-lab/speaker-node-hero-v2.png"
-									alt="Spherical industrial active-noise-control speaker mounted on a rugged galvanized pole fixture in a dark product studio"
-									fill
-									priority={false}
-									sizes="(min-width: 1536px) 1500px, 100vw"
-									className="object-cover object-center"
-								/>
-								<div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/12 to-transparent" />
-								<figcaption className="absolute inset-y-0 left-0 flex max-w-[48rem] flex-col justify-center p-7 sm:p-12 lg:p-16">
-									<p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#168bd2]">The array node</p>
-									<h3 className="mt-4 max-w-lg text-3xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
-										One pole. One speaker. One local model of the sound field.
-									</h3>
-									<p className="mt-5 max-w-md text-sm leading-6 text-white/50 sm:text-base">
-										A weatherproof loudspeaker, reference microphone, environmental sensor, and networked controller in a portable perimeter fixture.
-									</p>
-								</figcaption>
-							</div>
-						</figure>
-
-						<div className="grid gap-5 lg:grid-cols-2">
-							<figure className="overflow-hidden rounded-3xl border border-white/10 bg-[#070a0d]">
-								<div className="relative aspect-[16/10] overflow-hidden border-b border-white/10">
-									<Image
-										src="/images/sound-lab/construction-speaker-array.png"
-										alt="Concept prototype with weatherproof speakers mounted on tall metal stands around a fenced construction site"
-										fill
-										sizes="(min-width: 1024px) 50vw, 100vw"
-										className="object-cover"
-									/>
-									<div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#070a0d] to-transparent" />
-									<div className="absolute bottom-5 left-5 flex items-center gap-2 rounded-full border border-[#ffc247]/25 bg-[#0b0e12]/85 px-3 py-2 font-mono text-[9px] uppercase tracking-[0.14em] text-[#ffc247] backdrop-blur-md">
-										<HardHat className="size-3.5" /> 01 · source-side prototype
-									</div>
-								</div>
-								<figcaption className="p-6 sm:p-8">
-									<h3 className="text-xl font-semibold">A ring of sensing loudspeakers on portable stilts.</h3>
-									<p className="mt-3 text-sm leading-6 text-white/50">
-										Weatherproof nodes capture a source reference, probe the environment’s transfer matrix, and synthesize bounded anti-noise. The first trial should use one stationary machine, a small protected seating area, and conservative output limits.
-									</p>
-								</figcaption>
-							</figure>
-
-							<figure className="overflow-hidden rounded-3xl border border-[#3bb9e8]/15 bg-[#070a0d]">
-								<div className="relative aspect-[16/10] overflow-hidden border-b border-white/10">
-									<Image
-										src="/images/sound-lab/cafe-quiet-zone.png"
-										alt="People talking comfortably at an outdoor café while construction continues across the street behind an active speaker array"
-										fill
-										sizes="(min-width: 1024px) 50vw, 100vw"
-										className="object-cover"
-									/>
-									<div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#070a0d] to-transparent" />
-									<div className="absolute bottom-5 left-5 flex items-center gap-2 rounded-full border border-[#3bb9e8]/25 bg-[#0b0e12]/85 px-3 py-2 font-mono text-[9px] uppercase tracking-[0.14em] text-[#3bb9e8] backdrop-blur-md">
-										<Coffee className="size-3.5" /> 02 · human outcome
-									</div>
-								</div>
-								<figcaption className="p-6 sm:p-8">
-									<h3 className="text-xl font-semibold">Construction continues. Conversation gets easier.</h3>
-									<p className="mt-3 text-sm leading-6 text-white/50">
-										A camera tracks the café table while local microphones update H(f). The controller spends its limited degrees of freedom around people’s ears, prioritizing the low-frequency engine and cutting energy that masks speech.
-									</p>
-								</figcaption>
-							</figure>
-						</div>
-
-						<div className="mt-6 rounded-3xl border border-[#2f6df6]/20 bg-gradient-to-r from-[#2f6df6]/[0.07] via-[#3bb9e8]/[0.045] to-transparent p-7 sm:p-10">
-							<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#2f6df6]">The product thesis</p>
-							<p className="mt-4 max-w-5xl text-2xl font-semibold leading-tight tracking-tight sm:text-4xl">
-								Not silence everywhere. <span className="text-[#3bb9e8]">A quieter place exactly where someone wants to sit.</span>
-							</p>
-							<p className="mt-5 text-xs leading-5 text-white/35">Concept visualizations, not photographs of field-tested hardware.</p>
-						</div>
-					</div>
-				</section>
-			</div>
 		</main>
 	);
 }

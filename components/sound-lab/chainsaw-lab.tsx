@@ -348,6 +348,7 @@ export function ChainsawLab({
 	active: boolean;
 	showControls: boolean;
 }) {
+	const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const frameRef = useRef(0);
 	const lastFrameRef = useRef(0);
@@ -527,12 +528,12 @@ export function ChainsawLab({
 						<audio
 							controls
 							preload="metadata"
-							src="/audio/chainsaw-steady.ogg"
+							src={`${basePath}/audio/chainsaw-steady.ogg`}
 							className="h-9 w-full max-w-[320px] opacity-80"
 						>
 							<track
 								kind="captions"
-								src="/audio/chainsaw-steady.vtt"
+								src={`${basePath}/audio/chainsaw-steady.vtt`}
 								srcLang="en"
 								label="Sound description"
 							/>

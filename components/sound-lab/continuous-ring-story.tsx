@@ -364,13 +364,6 @@ export function ContinuousRingStory({
 						role="img"
 						aria-label="Animated ideal continuous-ring sound cancellation story"
 					/>
-					<div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded-lg border border-white/10 bg-[#0b0e12]/88 px-3 py-2 backdrop-blur">
-						<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/45">
-							Ideal model
-						</span>
-						<span className="h-3 w-px bg-white/10" />
-						<span className="font-mono text-[10px] text-[#ffc247]">{FREQUENCY} Hz</span>
-					</div>
 					<div className="pointer-events-none absolute bottom-4 right-4 rounded-lg border border-white/10 bg-[#0b0e12]/88 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.13em] text-white/45 backdrop-blur">
 						Stage {stage + 1} / {STAGES.length}
 					</div>
