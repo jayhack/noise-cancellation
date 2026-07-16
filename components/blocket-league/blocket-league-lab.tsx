@@ -384,13 +384,14 @@ export function BlocketLeagueLab() {
             <h2 id="prediction-title">It keeps both circles in motion.</h2>
           </div>
           <p>
-            On 128 unseen worlds, the model averages 1.00 pixel of entity-position error through
-            frame 12. At frame 64 it has drifted, but the board and both moving bodies remain intact.
+            On 128 unseen worlds, the model averages 0.93 pixels of entity-position error through
+            frame 12. It was also trained on its own predicted histories and split-disc corruptions,
+            so malformed circles are pulled back toward the game manifold instead of compounding.
           </p>
         </div>
         <figure className={styles.pixelRolloutFigure}>
           <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/blocket-league/passive/rollout.png`} width={2356} height={658} unoptimized alt="Observed context, true future, and pixel-transformer prediction across twelve frames." />
-          <figcaption><span>8 observed frames → 12 autonomous predictions</span><span>1.00 px short-horizon · 7.55 px over 64 frames</span></figcaption>
+          <figcaption><span>8 observed frames → 12 autonomous predictions</span><span>0.93 px short-horizon · 6.53 px over 64 frames</span></figcaption>
         </figure>
       </section>
 

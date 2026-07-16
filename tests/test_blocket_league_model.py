@@ -21,6 +21,7 @@ from blocket_league.latent_probe import (
 from blocket_league.metrics import trajectory_metrics
 from blocket_league.model import DiffusionSchedule, VideoDiT, VideoDiTConfig
 from blocket_league.pixel_direct_model import DirectPixelTransformer, PixelDirectConfig
+from blocket_league.train_pixel_direct import corrupt_player_entities, model_rollin_inputs
 from blocket_league.trajectory_assets import sample_autoregressive
 from blocket_league.train import (
     TrainConfig,
@@ -32,6 +33,22 @@ from blocket_league.train_direct import direct_training_loss, rollout_latents
 
 
 class BlocketLeagueModelTests(unittest.TestCase):
+    def test_player_corruption_matches_split_blob_rollout_failures(self) -> None:
+        frames = torch.full((2, 3, 16, 16), 5, dtype=torch.long)
+        corrupted = corrupt_player_entities(frames, 1.0)
+        self.assertEqual(corrupted.shape, frames.shape)
+        self.assertTrue((corrupted == 1).any())
+        self.assertTrue((corrupted == 5).any())
+        self.assertFalse(torch.equal(corrupted, frames))
+
+    def test_model_rollin_can_be_disabled_without_an_extra_forward(self) -> None:
+        class FailingModel(nn.Module):
+            def forward(self, _: torch.Tensor) -> torch.Tensor:
+                raise AssertionError("disabled roll-in should not call the model")
+
+        frames = torch.randint(0, 9, (2, 3, 16, 16))
+        self.assertIs(model_rollin_inputs(FailingModel(), frames, 0.0), frames)
+
     def test_direct_pixel_transformer_predicts_palette_pixels(self) -> None:
         config = PixelDirectConfig(
             image_size=16,

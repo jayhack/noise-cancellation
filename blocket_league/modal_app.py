@@ -121,11 +121,19 @@ def _run_direct_training(
     return summary
 
 
-def _run_pixel_direct_training(job_id: str, train_config: dict[str, object]) -> dict[str, object]:
+def _run_pixel_direct_training(
+    job_id: str,
+    train_config: dict[str, object],
+    init_checkpoint_bytes: bytes | None,
+) -> dict[str, object]:
     sys.path.insert(0, REMOTE_PROJECT)
     from blocket_league.train_pixel_direct import PixelDirectTrainConfig, train_pixel_direct
 
     output_dir = Path(REMOTE_RESULTS) / job_id
+    if init_checkpoint_bytes is not None:
+        init_checkpoint = Path("/tmp/pixel-direct-init.pt")
+        init_checkpoint.write_bytes(init_checkpoint_bytes)
+        train_config = {**train_config, "init_checkpoint_path": str(init_checkpoint)}
     summary = train_pixel_direct(PixelDirectTrainConfig(output_dir=str(output_dir), **train_config))
     results.commit()
     return summary
@@ -248,8 +256,9 @@ def train_direct_remote_h100(
 def train_pixel_direct_remote_h100(
     job_id: str,
     train_config: dict[str, object],
+    init_checkpoint_bytes: bytes | None,
 ) -> dict[str, object]:
-    return _run_pixel_direct_training(job_id, train_config)
+    return _run_pixel_direct_training(job_id, train_config, init_checkpoint_bytes)
 
 
 @app.function(
@@ -538,6 +547,11 @@ def main(
     latent_cache_samples: int = 16_384,
     pixel_history_frames: int = 8,
     goal_centered_fraction: float = 0.35,
+    pixel_corruption_rate: float = 0.06,
+    pixel_entity_corruption_fraction: float = 0.25,
+    pixel_model_rollin_fraction: float = 0.35,
+    pixel_model_rollin_start_step: int = 3_000,
+    pixel_model_rollin_ramp_steps: int = 7_000,
     integration_steps: int = 10,
     codec_feature_weight: float = 1.0,
     latent_dim: int = 32,
@@ -562,6 +576,10 @@ def main(
         raise ValueError("rollout_context_fraction must be in [0, 1]")
     if not 0.0 <= goal_centered_fraction <= 1.0:
         raise ValueError("goal_centered_fraction must be in [0, 1]")
+    if not 0.0 <= pixel_entity_corruption_fraction <= 1.0:
+        raise ValueError("pixel_entity_corruption_fraction must be in [0, 1]")
+    if not 0.0 <= pixel_model_rollin_fraction <= 1.0:
+        raise ValueError("pixel_model_rollin_fraction must be in [0, 1]")
     if stage in {"codec", "latent", "direct", "pixel-direct"} and gpu != "H100":
         raise ValueError("The representation-codec stages currently run on H100")
     if probe_checkpoint:
@@ -867,6 +885,12 @@ def main(
             f"Starting direct pixel transformer on Modal: "
             f"{job_id} ({preset=}, {steps=}, {batch_size=})"
         )
+        init_checkpoint_bytes = None
+        if init_checkpoint:
+            checkpoint = Path(init_checkpoint).expanduser().resolve()
+            if not checkpoint.is_file():
+                raise FileNotFoundError(checkpoint)
+            init_checkpoint_bytes = checkpoint.read_bytes()
         summary = train_pixel_direct_remote_h100.remote(
             job_id,
             {
@@ -884,10 +908,16 @@ def main(
                 "rollout_frames": latent_rollout_frames,
                 "cache_samples": latent_cache_samples,
                 "goal_centered_fraction": goal_centered_fraction,
+                "corruption_rate": pixel_corruption_rate,
+                "entity_corruption_fraction": pixel_entity_corruption_fraction,
+                "model_rollin_fraction": pixel_model_rollin_fraction,
+                "model_rollin_start_step": pixel_model_rollin_start_step,
+                "model_rollin_ramp_steps": pixel_model_rollin_ramp_steps,
                 "late_frame_weight": late_frame_weight,
                 "ema_decay": ema_decay,
                 "warmup_steps": warmup_steps,
             },
+            init_checkpoint_bytes,
         )
         print(json.dumps(summary, indent=2))
         count = _download(job_id, destination)

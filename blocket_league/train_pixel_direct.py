@@ -24,6 +24,7 @@ from .train import save_rollout_comparison
 @dataclass
 class PixelDirectTrainConfig:
     output_dir: str = "blocket_league/outputs/pixel-direct-local"
+    init_checkpoint_path: str = ""
     preset: str = "tiny"
     steps: int = 30_000
     batch_size: int = 16
@@ -43,6 +44,10 @@ class PixelDirectTrainConfig:
     cache_batch_size: int = 64
     goal_centered_fraction: float = 0.35
     corruption_rate: float = 0.06
+    entity_corruption_fraction: float = 0.25
+    model_rollin_fraction: float = 0.35
+    model_rollin_start_step: int = 3_000
+    model_rollin_ramp_steps: int = 7_000
     late_frame_weight: float = 2.0
     ema_decay: float = 0.9995
     warmup_steps: int = 500
@@ -117,13 +122,63 @@ def build_pixel_cache(config: PixelDirectTrainConfig, device: torch.device):
     return frames, class_weights, time.perf_counter() - started, frequencies
 
 
-def pixel_training_loss(model, inputs, targets, class_weights, *, corruption_rate, late_frame_weight):
+def corrupt_player_entities(inputs: torch.Tensor, fraction: float) -> torch.Tensor:
+    """Split and displace player-colored regions to mimic autoregressive failures."""
+    if fraction <= 0:
+        return inputs
+    batch, time, height, width = inputs.shape
+    green = (inputs == 5) | (inputs == 6)
+    selected = torch.rand(batch, time, 1, 1, device=inputs.device) < fraction
+    x = torch.arange(width, device=inputs.device)[None, None, None]
+    y = torch.arange(height, device=inputs.device)[None, None, :, None]
+    cut_x = torch.randint(width // 4, 3 * width // 4, (batch, time, 1, 1), device=inputs.device)
+    cut_y = torch.randint(height // 4, 3 * height // 4, (batch, time, 1, 1), device=inputs.device)
+    vertical = torch.rand(batch, time, 1, 1, device=inputs.device) < 0.5
+    positive = torch.rand(batch, time, 1, 1, device=inputs.device) < 0.5
+    x_side = torch.where(positive, x >= cut_x, x < cut_x)
+    y_side = torch.where(positive, y >= cut_y, y < cut_y)
+    fragment = green & torch.where(vertical, x_side, y_side) & selected
+    corrupted = torch.where(fragment, torch.ones_like(inputs), inputs)
+    dx = random.choice((-4, -3, 3, 4))
+    dy = random.choice((-3, -2, 2, 3))
+    shifted = torch.roll(fragment, shifts=(dy, dx), dims=(-2, -1))
+    return torch.where(shifted, torch.full_like(corrupted, 5), corrupted)
+
+
+@torch.no_grad()
+def model_rollin_inputs(model, inputs: torch.Tensor, fraction: float) -> torch.Tensor:
+    """Replace later teacher-forced frames with the model's own one-step outputs."""
+    if fraction <= 0:
+        return inputs
+    logits = model(inputs)
+    if not isinstance(logits, torch.Tensor):
+        logits = logits[0]
+    predicted = logits[:, :-1].argmax(dim=2)
+    batch, time = inputs.shape[:2]
+    temporal_ramp = torch.linspace(0.2, 1.0, time - 1, device=inputs.device)[None, :, None, None]
+    replace = torch.rand(batch, time - 1, 1, 1, device=inputs.device) < fraction * temporal_ramp
+    output = inputs.clone()
+    output[:, 1:] = torch.where(replace, predicted, output[:, 1:])
+    return output
+
+
+def pixel_training_loss(
+    model,
+    inputs,
+    targets,
+    class_weights,
+    *,
+    corruption_rate,
+    entity_corruption_fraction,
+    late_frame_weight,
+):
     batch, time = inputs.shape[:2]
     severity = torch.rand(batch, 1, 1, 1, device=inputs.device)
     ramp = torch.linspace(0.25, 1.0, time, device=inputs.device)[None, :, None, None]
     corrupt = torch.rand(inputs.shape, device=inputs.device) < severity * ramp * corruption_rate
     replacements = torch.randint(0, model.config.palette_size, inputs.shape, device=inputs.device)
     corrupted = torch.where(corrupt, replacements, inputs.long())
+    corrupted = corrupt_player_entities(corrupted, entity_corruption_fraction)
     logits = model(corrupted)
     if not isinstance(logits, torch.Tensor):
         logits = logits[0]
@@ -172,6 +227,22 @@ def held_out_clip(
     }
 
 
+def split_player_context(context: torch.Tensor, frames: int = 2) -> torch.Tensor:
+    """Deterministically split the visible player in the tail of a context."""
+    output = context.clone()
+    tail = output[:, -frames:]
+    green = (tail == 5) | (tail == 6)
+    width = tail.shape[-1]
+    x = torch.arange(width, device=tail.device)[None, None, None]
+    mass = green.sum(dim=(-2, -1), keepdim=True).clamp_min(1)
+    centroid_x = (green * x).sum(dim=(-2, -1), keepdim=True) / mass
+    fragment = green & (x >= centroid_x)
+    tail = torch.where(fragment, torch.ones_like(tail), tail)
+    tail = torch.where(torch.roll(fragment, shifts=(2, 4), dims=(-2, -1)), 5, tail)
+    output[:, -frames:] = tail
+    return output
+
+
 @torch.no_grad()
 def evaluate_pixel_direct(model, config, device, *, goal_centered: bool = False):
     palette = palette_tensor(device)
@@ -209,11 +280,48 @@ def evaluate_pixel_direct(model, config, device, *, goal_centered: bool = False)
     }
 
 
+@torch.no_grad()
+def evaluate_corruption_recovery(model, config, device):
+    palette = palette_tensor(device)
+    totals: dict[str, float] = {}
+    sample_count = min(config.eval_samples, 64)
+    batch_size = min(config.batch_size, 8)
+    for start in range(0, sample_count, batch_size):
+        items = [held_out_clip(
+                     config.seed + 3_000_000 + index,
+                     config,
+                     device,
+                 )
+                 for index in range(start, min(start + batch_size, sample_count))]
+        context_video = torch.stack([item["context"] for item in items])
+        states = torch.stack([item["state"] for item in items])
+        context = frames_to_classes(context_video, palette)
+        corrupted = split_player_context(context)
+        prediction_classes = rollout_pixel_classes(model, corrupted, config.rollout_frames)
+        prediction = classes_to_video(prediction_classes, palette)
+        metrics = trajectory_metrics(prediction, states)
+        green_mass = ((prediction_classes == 5) | (prediction_classes == 6)).sum(dim=(-2, -1))
+        metrics["valid_player_shape_fraction"] = float(
+            ((green_mass >= 12) & (green_mass <= 160)).float().mean()
+        )
+        count = len(items)
+        for name, value in metrics.items():
+            totals[name] = totals.get(name, 0.0) + value * count
+    return {
+        name: value / sample_count
+        for name, value in totals.items()
+    } | {"samples": sample_count, "corrupted_context_frames": 2}
+
+
 def train_pixel_direct(config: PixelDirectTrainConfig) -> dict[str, Any]:
     if config.cache_frames <= config.history_frames:
         raise ValueError("cache_frames must exceed history_frames")
     if not 0.0 <= config.goal_centered_fraction <= 1.0:
         raise ValueError("goal_centered_fraction must be in [0, 1]")
+    if not 0.0 <= config.entity_corruption_fraction <= 1.0:
+        raise ValueError("entity_corruption_fraction must be in [0, 1]")
+    if not 0.0 <= config.model_rollin_fraction <= 1.0:
+        raise ValueError("model_rollin_fraction must be in [0, 1]")
     _seed_everything(config.seed)
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -225,6 +333,13 @@ def train_pixel_direct(config: PixelDirectTrainConfig) -> dict[str, Any]:
         palette_size=len(PALETTE), history_frames=config.history_frames,
     )
     model = DirectPixelTransformer(model_config).to(device)
+    if config.init_checkpoint_path:
+        initial = torch.load(config.init_checkpoint_path, map_location="cpu", weights_only=False)
+        if initial.get("kind") != "passive_direct_pixel_world_model":
+            raise ValueError("init_checkpoint_path is not a passive direct pixel checkpoint")
+        if initial.get("model_config") != model_config.to_dict():
+            raise ValueError("init_checkpoint_path model configuration does not match this run")
+        model.load_state_dict(initial["model"])
     ema_model = copy.deepcopy(model).eval().requires_grad_(False)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate,
                                   weight_decay=config.weight_decay, betas=(0.9, 0.95),
@@ -242,12 +357,24 @@ def train_pixel_direct(config: PixelDirectTrainConfig) -> dict[str, Any]:
             frame_indices = starts[:, None] + offsets
             inputs = cached_frames[indices[:, None], frame_indices].long()
             targets = cached_frames[indices[:, None], frame_indices + 1].long()
+            rollin_ramp = max(config.model_rollin_ramp_steps, 1)
+            rollin_progress = max(0.0, min(
+                1.0,
+                (step - config.model_rollin_start_step) / rollin_ramp,
+            ))
+            with torch.autocast(device_type=device.type, dtype=torch.bfloat16, enabled=device.type == "cuda"):
+                inputs = model_rollin_inputs(
+                    ema_model,
+                    inputs,
+                    config.model_rollin_fraction * rollin_progress,
+                )
             learning_rate = config.learning_rate * _learning_rate_multiplier(step, config)
             for group in optimizer.param_groups: group["lr"] = learning_rate
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast(device_type=device.type, dtype=torch.bfloat16, enabled=device.type == "cuda"):
                 loss = pixel_training_loss(model, inputs, targets, class_weights,
                                            corruption_rate=config.corruption_rate,
+                                           entity_corruption_fraction=config.entity_corruption_fraction,
                                            late_frame_weight=config.late_frame_weight)
             loss.backward()
             gradient_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -258,6 +385,7 @@ def train_pixel_direct(config: PixelDirectTrainConfig) -> dict[str, Any]:
                 payload = {"step": step, "loss": losses[-1],
                            "loss_ema_50": float(np.mean(losses[-50:])),
                            "gradient_norm": float(gradient_norm), "learning_rate": learning_rate,
+                           "model_rollin_probability": config.model_rollin_fraction * rollin_progress,
                            "examples_per_second": step * config.batch_size / max(time.perf_counter() - started, 1e-6)}
                 print(json.dumps(payload), flush=True)
                 log_file.write(json.dumps(payload) + "\n"); log_file.flush()
@@ -275,6 +403,7 @@ def train_pixel_direct(config: PixelDirectTrainConfig) -> dict[str, Any]:
                             preview_target[0, -12:], prediction[0, -12:])
     evaluation = evaluate_pixel_direct(ema_model, config, device)
     post_goal_evaluation = evaluate_pixel_direct(ema_model, config, device, goal_centered=True)
+    corruption_recovery = evaluate_corruption_recovery(ema_model, config, device)
     checkpoint = {"kind": "passive_direct_pixel_world_model", "model": ema_model.state_dict(),
                   "model_config": model_config.to_dict(), "train_config": asdict(config),
                   "palette": np.stack(tuple(PALETTE.values())), "step": config.steps}
@@ -288,6 +417,7 @@ def train_pixel_direct(config: PixelDirectTrainConfig) -> dict[str, Any]:
                "class_frequencies": frequencies.cpu().tolist(), "class_weights": class_weights.cpu().tolist(),
                "evaluation": evaluation,
                "post_goal_evaluation": post_goal_evaluation,
+               "corruption_recovery": corruption_recovery,
                "artifacts": ["checkpoint.pt", "rollout.png", "rollout-long.png", "train.jsonl", "summary.json"]}
     (output_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return summary

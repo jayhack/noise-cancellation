@@ -87,7 +87,7 @@ export function PixelInterpretabilityViewer() {
       </div>
 
       <div className={styles.evidenceStrip}>
-        <div><span>PREDICTION</span><strong>1.00 px</strong><small>mean entity error · frames 1–12</small></div>
+        <div><span>PREDICTION</span><strong>0.93 px</strong><small>mean entity error · frames 1–12</small></div>
         <div><span>READOUT</span><strong>{score(bestVelocity)} R²</strong><small>green-circle velocity · block {bestProbe.block}</small></div>
         <div className={styles.evidenceCausal}><span>CAUSAL WRITE</span><strong>+{plus.final_x_delta_px?.toFixed(2)} px</strong><small>four writes · measured at frame 12</small></div>
       </div>
@@ -150,7 +150,7 @@ export function PixelInterpretabilityViewer() {
         <div className={styles.causalMethodLine}><span>FROZEN WEIGHTS</span><span>NO ACTION CHANNEL</span><span>BLOCK {manifest.causal.block}</span><span>{manifest.causal.writeFrames} WRITE FRAMES</span><span>{manifest.testSamples} UNSEEN WORLDS</span></div>
       </div>
 
-      <p className={styles.probeFootnote}>Checkpoint {manifest.checkpointStep.toLocaleString()} · all readouts are derived from rendered pixels · simulator state is used only for trajectory-error evaluation · the intervention direction is global across rollouts.</p>
+      <p className={styles.probeFootnote}>Recovery fine-tune {manifest.checkpointStep.toLocaleString()} steps · all readouts are derived from rendered pixels · simulator state is used only for trajectory-error evaluation · the intervention direction is global across rollouts.</p>
     </div>
   );
 }

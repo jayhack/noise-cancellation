@@ -175,6 +175,13 @@ randomized across these clips so every scoreboard state appears at reset. The
 moving kickoff is deterministic from that visible score, keeping the passive
 world fully observable from pixels.
 
+The deployed checkpoint adds a 12,000-step recovery fine-tune. Twenty percent
+of training histories contain a player disc whose pixels are split and shifted,
+and 35% of later history frames are replaced with the transformer's own
+one-step predictions. This directly matches the structured off-manifold states
+created by autoregressive play; the original salt-and-pepper pixel corruption
+remains as a smaller, independent perturbation.
+
 ```bash
 uvx --from modal modal run blocket_league/modal_app.py \
   --stage pixel-direct \
@@ -192,16 +199,21 @@ uvx --from modal modal run blocket_league/modal_app.py \
   --output-dir blocket_league/outputs/passive-pixel-direct-tiny-30000
 ```
 
-The 3.67M-parameter model reaches 1.00 px mean entity error across the first 12
-autoregressive frames and 7.55 px over 64 frames. On goal-centered clips it
-crosses the reset at 0.18 px short-horizon error while retaining both entities.
+Recovery fine-tuning starts from that checkpoint with `--init-checkpoint`,
+`--pixel-entity-corruption-fraction 0.20`, and
+`--pixel-model-rollin-fraction 0.35`. The resulting 3.67M-parameter model
+reaches 0.93 px mean entity error across the first 12 autoregressive frames and
+6.53 px over 64 frames. On goal-centered clips it crosses the reset at 0.20 px
+short-horizon error while retaining both entities. After deliberately splitting
+the green disc in the last two context frames, 99.98% of generated frames keep
+a plausibly sized green entity across a 64-frame rollout.
 A post-hoc block-5 linear probe recovers visually measured large-disc velocity
 at 0.91 R² on 256 held-out clips. A single downstream-averaged +x activation
 direction, fit on a separate 512-clip split and written for only four frames,
-leaves the disc +3.38 px from baseline after 12 frames with 86.7% sign
+leaves the disc +3.51 px from baseline after 12 frames with 85.9% sign
 consistency. The displacement grows by another +2.00 px after writes stop; a
-matched random direction ends at -0.47 px. Immediately after a reset, holding
-that same +x write for all 12 frames produces +3.10 px with 87.1% sign
+matched random direction ends at -0.31 px. Immediately after a reset, holding
+that same +x write for all 12 frames produces +2.45 px with 89.1% sign
 consistency. Brief writes at kickoff do not persist after release. The assay
 uses rendered pixels for its readout and routing, never simulator state or
 action labels.
@@ -211,12 +223,12 @@ Run the assay with:
 ```bash
 uvx --from modal modal run blocket_league/modal_app.py \
   --interpret-pixel-checkpoint \
-    blocket_league/outputs/passive-pixel-direct-tiny-30000/checkpoint.pt \
+    blocket_league/outputs/passive-pixel-direct-recovery-finetune-12000/checkpoint.pt \
   --interpret-samples 512 \
   --interpret-batch-size 32 \
   --intervention-samples 256 \
   --intervention-asset-strength 8 \
-  --output-dir blocket_league/outputs/passive-pixel-interpretability-strong
+  --output-dir blocket_league/outputs/passive-pixel-interpretability-recovery
 ```
 
 ### Browser player
@@ -236,8 +248,8 @@ uv run --python 3.12 \
   --with torch --with numpy --with pillow \
   --with onnx --with onnxscript --with onnxruntime \
   python -m blocket_league.export_browser_pixel \
-  blocket_league/outputs/passive-pixel-direct-tiny-30000/checkpoint.pt \
-  blocket_league/outputs/passive-pixel-interpretability-xy/passive-pixel-manifest.json \
+  blocket_league/outputs/passive-pixel-direct-recovery-finetune-12000/checkpoint.pt \
+  blocket_league/outputs/passive-pixel-interpretability-recovery/passive-pixel-manifest.json \
   public/blocket-league/live
 ```
 

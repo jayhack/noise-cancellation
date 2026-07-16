@@ -224,7 +224,12 @@ def run_pixel_interpretability(
         }
         for layer in range(len(model.blocks))
     ]
-    best_block = max(range(len(probes)), key=lambda index: probes[index]["velocity_r2"])
+    best_velocity_r2 = max(probe["velocity_r2"] for probe in probes)
+    best_block = min(
+        index
+        for index, probe in enumerate(probes)
+        if probe["velocity_r2"] >= best_velocity_r2 - 0.01
+    )
 
     direction_batches = []
     for start in range(0, fit_samples, batch_size):
@@ -308,6 +313,7 @@ def run_pixel_interpretability(
         "testSamples": test_samples,
         "labelSource": "rendered pixels only",
         "actionConditioning": False,
+        "causalBlockSelection": "earliest block within 0.01 R2 of the best velocity probe",
         "probes": probes,
         "causal": {
             "method": "held-out downstream-averaged gradient write",

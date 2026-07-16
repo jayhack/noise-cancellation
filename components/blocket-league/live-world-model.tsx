@@ -40,6 +40,7 @@ type EngineState = {
   manifest: LiveManifest;
   starterContext: Float32Array;
   history: Float32Array;
+  lastGreenSpatialMask: Float32Array;
 };
 
 type DreamFrame = { image: ImageData; action: number };
@@ -108,26 +109,33 @@ function logitsToClasses(logits: Float32Array, manifest: LiveManifest) {
   return output;
 }
 
-function greenTokenMask(history: Float32Array, manifest: LiveManifest) {
+export function greenTokenMask(
+  history: Float32Array,
+  manifest: LiveManifest,
+  fallback?: Float32Array,
+) {
   const pixels = manifest.frameSize * manifest.frameSize;
   const offset = history.length - pixels;
-  let mass = 0;
-  let sumX = 0;
-  let sumY = 0;
+  const spatial = new Float32Array(manifest.gridSize * manifest.gridSize);
+  let peakMass = 0;
   for (let pixel = 0; pixel < pixels; pixel += 1) {
     const value = Number(history[offset + pixel]);
     if (value !== 5 && value !== 6) continue;
-    mass += 1;
-    sumX += (pixel % manifest.frameSize) + 0.5;
-    sumY += Math.floor(pixel / manifest.frameSize) + 0.5;
+    const patchX = Math.floor((pixel % manifest.frameSize) / manifest.patchSize);
+    const patchY = Math.floor(Math.floor(pixel / manifest.frameSize) / manifest.patchSize);
+    const patch = patchY * manifest.gridSize + patchX;
+    spatial[patch] += 1;
+    peakMass = Math.max(peakMass, spatial[patch]);
   }
   const mask = new Float32Array(manifest.historyFrames * manifest.gridSize * manifest.gridSize);
-  if (!mass) return mask;
-  const patchX = Math.max(0, Math.min(manifest.gridSize - 1, Math.floor(sumX / mass / manifest.patchSize)));
-  const patchY = Math.max(0, Math.min(manifest.gridSize - 1, Math.floor(sumY / mass / manifest.patchSize)));
+  const routed = peakMass > 0 ? spatial : fallback;
+  if (!routed?.some((value) => value > 0)) return { mask, spatial };
+  const scale = peakMass > 0 ? peakMass : Math.max(...routed);
   const timeOffset = (manifest.historyFrames - 1) * manifest.gridSize * manifest.gridSize;
-  mask[timeOffset + patchY * manifest.gridSize + patchX] = 1;
-  return mask;
+  for (let patch = 0; patch < routed.length; patch += 1) {
+    mask[timeOffset + patch] = routed[patch] / Math.max(scale, 1);
+  }
+  return { mask, spatial: peakMass > 0 ? spatial : routed.slice() };
 }
 
 function steeringVector(action: number, manifest: LiveManifest) {
@@ -146,6 +154,7 @@ function steeringVector(action: number, manifest: LiveManifest) {
 
 async function generateFrame(engine: EngineState, action: number) {
   const { manifest, runtime } = engine;
+  const greenRouting = greenTokenMask(engine.history, manifest, engine.lastGreenSpatialMask);
   const result = await engine.dynamics.run({
     pixel_history: new runtime.Tensor(
       "float32",
@@ -159,7 +168,7 @@ async function generateFrame(engine: EngineState, action: number) {
     ),
     intervention_mask: new runtime.Tensor(
       "float32",
-      greenTokenMask(engine.history, manifest),
+      greenRouting.mask,
       [1, manifest.historyFrames, manifest.gridSize * manifest.gridSize],
     ),
   });
@@ -169,6 +178,7 @@ async function generateFrame(engine: EngineState, action: number) {
   const pixels = manifest.frameSize * manifest.frameSize;
   engine.history.copyWithin(0, pixels);
   engine.history.set(next, engine.history.length - pixels);
+  engine.lastGreenSpatialMask = greenRouting.spatial;
   return classesToImage(next, manifest);
 }
 
@@ -289,6 +299,7 @@ export function LiveWorldModel() {
         manifest,
         starterContext: starterContext.slice(),
         history: starterContext.slice(),
+        lastGreenSpatialMask: greenTokenMask(starterContext, manifest).spatial,
       };
       setProvider(selectedProvider);
       setModelLoaded(true);
@@ -377,7 +388,10 @@ export function LiveWorldModel() {
     stopPlayback();
     queueRef.current = [];
     const engine = engineRef.current;
-    if (engine) engine.history = engine.starterContext.slice();
+    if (engine) {
+      engine.history = engine.starterContext.slice();
+      engine.lastGreenSpatialMask = greenTokenMask(engine.history, engine.manifest).spatial;
+    }
     keysRef.current.clear();
     manualActionRef.current = null;
     setInputAction(0);
