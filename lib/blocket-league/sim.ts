@@ -103,6 +103,26 @@ export function resetRound(state: WorldState, resetScore = false) {
   }
 }
 
+export function resetPassiveRound(state: WorldState, resetScore = false) {
+  state.playerPosition = { x: 0.24 + random(state) * 0.28, y: 0.2 + random(state) * 0.6 };
+  state.puckPosition = { x: 0.55 + random(state) * 0.25, y: 0.2 + random(state) * 0.6 };
+  const playerAngle = random(state) * Math.PI * 2;
+  const puckAngle = playerAngle + Math.PI + (random(state) - 0.5) * 0.8;
+  const playerSpeed = 0.34 + random(state) * 0.34;
+  const puckSpeed = 0.24 + random(state) * 0.34;
+  state.playerVelocity = { x: Math.cos(playerAngle) * playerSpeed, y: Math.sin(playerAngle) * playerSpeed };
+  state.puckVelocity = { x: Math.cos(puckAngle) * puckSpeed, y: Math.sin(puckAngle) * puckSpeed };
+  if (resetScore) state.score = 0;
+  state.resetTimer = 0;
+  state.lastEvent = "kickoff";
+}
+
+export function createPassiveWorld(seed = 7): WorldState {
+  const state = createWorld(seed);
+  resetPassiveRound(state, true);
+  return state;
+}
+
 function speed(vector: Vec2) {
   return Math.hypot(vector.x, vector.y);
 }
@@ -154,26 +174,31 @@ function collideDiscs(state: WorldState) {
   return true;
 }
 
-export function stepWorld(state: WorldState, action: number) {
+export function stepWorld(state: WorldState, action: number, passive = false) {
   state.tick += 1;
   state.lastEvent = "coast";
   if (state.resetTimer > 0) {
     state.resetTimer -= 1;
     state.lastEvent = "goal";
-    if (state.resetTimer === 0) resetRound(state);
+    if (state.resetTimer === 0) {
+      if (passive) resetPassiveRound(state);
+      else resetRound(state);
+    }
     return;
   }
 
   const raw = ACTION_VECTORS[action] ?? ACTION_VECTORS[0];
   const magnitude = Math.hypot(raw.x, raw.y) || 1;
   const direction = { x: raw.x / magnitude, y: raw.y / magnitude };
-  if (action !== 0) state.lastEvent = "thrust";
+  if (!passive && action !== 0) state.lastEvent = "thrust";
   const dt = 1 / WORLD.fps / WORLD.substeps;
 
   for (let substep = 0; substep < WORLD.substeps; substep += 1) {
-    state.playerVelocity.x += direction.x * WORLD.playerAcceleration * dt;
-    state.playerVelocity.y += direction.y * WORLD.playerAcceleration * dt;
-    const playerDrag = Math.exp(-WORLD.playerDrag * dt);
+    if (!passive) {
+      state.playerVelocity.x += direction.x * WORLD.playerAcceleration * dt;
+      state.playerVelocity.y += direction.y * WORLD.playerAcceleration * dt;
+    }
+    const playerDrag = Math.exp(-(passive ? WORLD.puckDrag : WORLD.playerDrag) * dt);
     const puckDrag = Math.exp(-WORLD.puckDrag * dt);
     state.playerVelocity.x *= playerDrag;
     state.playerVelocity.y *= playerDrag;

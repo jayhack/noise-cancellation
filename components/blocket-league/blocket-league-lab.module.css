@@ -1734,6 +1734,38 @@
   image-rendering: pixelated;
 }
 
+.pixelRolloutFigure {
+  margin: 0;
+  border: 1px solid var(--line);
+  background: #070b10;
+  box-shadow: 0 26px 80px rgb(0 0 0 / 28%);
+}
+
+.pixelRolloutFigure img {
+  width: 100%;
+  height: auto;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.pixelRolloutFigure figcaption {
+  min-height: 48px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-top: 1px solid var(--line);
+  color: #6f7d7a;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+
+.pixelRolloutFigure figcaption span:first-child {
+  color: var(--mint);
+}
+
 .trajectoryTransport {
   min-height: 74px;
   padding: 13px 16px;

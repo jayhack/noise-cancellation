@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import {
   Activity,
   ArrowRight,
-  Braces,
   CircleDot,
   Cpu,
   Eye,
@@ -14,15 +14,11 @@ import {
   Play,
   RotateCcw,
   ScanLine,
-  Sparkles,
 } from "lucide-react";
 
 import {
-  ACTION_NAMES,
-  autopilotAction,
-  createWorld,
-  keyboardAction,
-  resetRound,
+  createPassiveWorld,
+  resetPassiveRound,
   snapshotWorld,
   stepWorld,
   WORLD,
@@ -31,14 +27,8 @@ import {
 } from "@/lib/blocket-league/sim";
 
 import styles from "./blocket-league-lab.module.css";
-import { CodecViewer } from "./codec-viewer";
-import { InterpretabilityViewer } from "./interpretability-viewer";
 import { LiveWorldModel } from "./live-world-model";
-import { LongRolloutViewer } from "./long-rollout-viewer";
-import { TrajectoryViewer } from "./trajectory-viewer";
-
-const PAD_ACTIONS = [8, 1, 2, 7, 0, 3, 6, 5, 4];
-const PAD_LABELS = ["↖", "↑", "↗", "←", "·", "→", "↙", "↓", "↘"];
+import { PixelInterpretabilityViewer } from "./pixel-interpretability-viewer";
 
 type TrailPoint = { player: Vec2; puck: Vec2 };
 
@@ -201,36 +191,12 @@ function format(value: number) {
 
 export function BlocketLeagueLab() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [initialWorld] = useState(() => createWorld(17));
+  const [initialWorld] = useState(() => createPassiveWorld(17));
   const worldRef = useRef<WorldState>(initialWorld);
   const trailRef = useRef<TrailPoint[]>([]);
-  const keysRef = useRef(new Set<string>());
-  const manualActionRef = useRef<number | null>(null);
   const [snapshot, setSnapshot] = useState(() => snapshotWorld(initialWorld));
-  const [currentAction, setCurrentAction] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [autoplay, setAutoplay] = useState(true);
   const [showVectors, setShowVectors] = useState(true);
-
-  useEffect(() => {
-    const movementKeys = new Set(["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft", "w", "a", "s", "d"]);
-    const keyDown = (event: KeyboardEvent) => {
-      if (!movementKeys.has(event.key)) return;
-      event.preventDefault();
-      keysRef.current.add(event.key);
-      setAutoplay(false);
-    };
-    const keyUp = (event: KeyboardEvent) => {
-      if (!movementKeys.has(event.key)) return;
-      keysRef.current.delete(event.key);
-    };
-    window.addEventListener("keydown", keyDown);
-    window.addEventListener("keyup", keyUp);
-    return () => {
-      window.removeEventListener("keydown", keyDown);
-      window.removeEventListener("keyup", keyUp);
-    };
-  }, []);
 
   useEffect(() => {
     let animationFrame = 0;
@@ -244,10 +210,7 @@ export function BlocketLeagueLab() {
       previous = now;
       let advanced = false;
       while (!paused && accumulator >= stepDuration) {
-        const action =
-          manualActionRef.current ?? (autoplay ? autopilotAction(world) : keyboardAction(keysRef.current));
-        setCurrentAction(action);
-        stepWorld(world, action);
+        stepWorld(world, 0, true);
         trailRef.current.push({
           player: { ...world.playerPosition },
           puck: { ...world.puckPosition },
@@ -262,21 +225,13 @@ export function BlocketLeagueLab() {
     };
     animationFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrame);
-  }, [autoplay, paused, showVectors]);
+  }, [paused, showVectors]);
 
   const reset = () => {
     const world = worldRef.current;
-    resetRound(world, true);
+    resetPassiveRound(world, true);
     trailRef.current = [];
-    setCurrentAction(0);
     setSnapshot(snapshotWorld(world));
-  };
-
-  const beginManualAction = (action: number) => {
-    manualActionRef.current = action;
-    setCurrentAction(action);
-    setAutoplay(false);
-    setPaused(false);
   };
 
   return (
@@ -296,8 +251,8 @@ export function BlocketLeagueLab() {
         <p className={styles.eyebrow}>A MINIMAL WORLD MODEL EXPERIMENT</p>
         <h1>Can a tiny world model<br />discover the rules?</h1>
         <p className={styles.heroCopy}>
-          Start with MIRA-style latent diffusion. Replace it with a faster direct transformer.
-          Then read—and rewrite—the physics hidden inside.
+          Train a transformer only to watch pixels move. Find the velocity it invents.
+          Then turn that hidden direction into the controls it never saw during training.
         </p>
         <a className={styles.jumpLink} href="#world">
           Enter the world <ArrowRight aria-hidden="true" />
@@ -308,11 +263,11 @@ export function BlocketLeagueLab() {
         <div className={styles.sectionHeading}>
           <div>
             <p className={styles.sectionIndex}>01 / THE WORLD</p>
-            <h2 id="world-title">Play the training distribution.</h2>
+            <h2 id="world-title">A world with no controls.</h2>
           </div>
           <p>
-            Use WASD or the arrow keys. Velocity is deliberately invisible to the model; turn on X-ray
-            mode to see the state it must reconstruct across frames.
+            Every clip begins with randomized momentum. After that, the two circles simply coast,
+            collide, bounce, and score. The training set contains pixels—not actions or state vectors.
           </p>
         </div>
 
@@ -333,38 +288,12 @@ export function BlocketLeagueLab() {
             </div>
           </div>
 
-          <aside className={styles.controlColumn} aria-label="Simulator controls and state">
+          <aside className={styles.controlColumn} aria-label="Passive simulator state">
             <div className={styles.controlTop}>
               <div>
-                <span className={styles.controlLabel}>CONTROL</span>
-                <strong>{autoplay ? "AUTOPILOT" : "MANUAL"}</strong>
+                <span className={styles.controlLabel}>TRAINING MODE</span>
+                <strong>OBSERVATION ONLY</strong>
               </div>
-              <button
-                className={`${styles.iconButton} ${autoplay ? styles.iconButtonActive : ""}`}
-                type="button"
-                onClick={() => setAutoplay((value) => !value)}
-                aria-pressed={autoplay}
-                aria-label="Toggle autopilot"
-              >
-                <Sparkles aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className={styles.pad} aria-label="Direction pad">
-              {PAD_ACTIONS.map((action, index) => (
-                <button
-                  key={action}
-                  type="button"
-                  className={action === 0 ? styles.padCenter : undefined}
-                  aria-label={ACTION_NAMES[action]}
-                  onPointerDown={() => beginManualAction(action)}
-                  onPointerUp={() => { manualActionRef.current = null; }}
-                  onPointerCancel={() => { manualActionRef.current = null; }}
-                  onPointerLeave={() => { manualActionRef.current = null; }}
-                >
-                  {PAD_LABELS[index]}
-                </button>
-              ))}
             </div>
 
             <div className={styles.transport}>
@@ -400,80 +329,45 @@ export function BlocketLeagueLab() {
               </dl>
               <div className={styles.eventLine}>
                 <span className={styles.eventPulse} />
-                {snapshot.lastEvent.toUpperCase()} · {ACTION_NAMES[currentAction].toUpperCase()}
+                {snapshot.lastEvent.toUpperCase()} · NO INPUT
               </div>
             </div>
           </aside>
         </div>
       </section>
 
-      <section className={styles.codecSection} aria-labelledby="codec-title">
-        <div className={styles.sectionHeading}>
-          <div>
-            <p className={styles.sectionIndex}>02 / REPRESENTATION CODEC</p>
-            <h2 id="codec-title">Compress pixels. Keep the game.</h2>
-          </div>
-          <p>
-            A frozen DINO encoder distills every pair of RGB frames into one compact 8 × 8 latent.
-            The learned causal decoder must preserve the tiny bodies and arena well enough for dynamics.
-          </p>
-        </div>
-        <CodecViewer />
-      </section>
-
-      <section className={styles.trajectorySection} aria-labelledby="trajectory-title">
-        <div className={styles.sectionHeading}>
-          <div>
-            <p className={styles.sectionIndex}>03 / TRAJECTORY THEATER</p>
-            <h2 id="trajectory-title">One past. Several possible futures.</h2>
-          </div>
-          <p>
-            First, test a MIRA-style latent diffusion model. It predicts one two-frame code at a time,
-            feeds each prediction back as context, and branches into several plausible futures.
-          </p>
-        </div>
-        <TrajectoryViewer />
-      </section>
-
       <section className={styles.modelSection} aria-labelledby="model-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionIndex}>04 / THE MODEL</p>
-            <h2 id="model-title">A small network with nowhere to hide.</h2>
+            <p className={styles.sectionIndex}>02 / THE MODEL</p>
+            <h2 id="model-title">Pixels in. Pixels out.</h2>
           </div>
           <p>
-            Our first model is a latent diffusion transformer: six clean frames establish state,
-            then flow matching denoises each future latent while previous predictions become context.
+            A 3.67-million-parameter causal transformer sees eight exact rendered frames and predicts
+            the ninth. There is no encoder, decoder, simulator state, or control token in the path.
           </p>
         </div>
 
         <div className={styles.pipeline}>
           <div className={styles.pipelineNode}>
-            <span><Braces aria-hidden="true" /></span>
-            <p>OBSERVE</p>
-            <strong>6 RGB frames</strong>
-            <small>position implies velocity</small>
-          </div>
-          <ArrowRight className={styles.pipelineArrow} aria-hidden="true" />
-          <div className={styles.pipelineNode}>
             <span><ScanLine aria-hidden="true" /></span>
-            <p>COMPRESS</p>
-            <strong>DINO RAE</strong>
-            <small>2 RGB → 1 × 8 × 8 × 32</small>
+            <p>OBSERVE</p>
+            <strong>8 pixel frames</strong>
+            <small>9 exact colors · 64 × 64</small>
           </div>
           <ArrowRight className={styles.pipelineArrow} aria-hidden="true" />
           <div className={`${styles.pipelineNode} ${styles.pipelineCore}`}>
             <span><Cpu aria-hidden="true" /></span>
-            <p>DENOISE</p>
-            <strong>Latent DiT</strong>
-            <small>flow matching + action pairs</small>
+            <p>PREDICT</p>
+            <strong>Pixel transformer</strong>
+            <small>6 causal blocks · no actions</small>
           </div>
           <ArrowRight className={styles.pipelineArrow} aria-hidden="true" />
           <div className={styles.pipelineNode}>
             <span><Activity aria-hidden="true" /></span>
-            <p>DECODE</p>
-            <strong>24 future frames</strong>
-            <small>2-frame causal autoregression</small>
+            <p>UNROLL</p>
+            <strong>1 future frame</strong>
+            <small>feed pixels back · repeat</small>
           </div>
           <div className={styles.probeRail}>
             <div><ScanLine aria-hidden="true" /> linear probes</div>
@@ -482,54 +376,56 @@ export function BlocketLeagueLab() {
         </div>
       </section>
 
-      <section className={styles.entropySection} aria-labelledby="entropy-title">
+      <section className={styles.trajectorySection} aria-labelledby="prediction-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionIndex}>05 / FAILURE HORIZON</p>
-            <h2 id="entropy-title">Freeze the weights. Keep rolling.</h2>
+            <p className={styles.sectionIndex}>03 / THE PREDICTION</p>
+            <h2 id="prediction-title">It keeps both circles in motion.</h2>
           </div>
           <p>
-            Push that diffusion checkpoint to 64 frames—more than five times its trained horizon.
-            The palette decoder stays crisp while the dynamics drift toward four incompatible worlds,
-            separating representation quality from world-model accuracy.
+            On 128 unseen worlds, the model averages 0.88 pixels of entity-position error through
+            frame 12. At frame 64 it has drifted, but the board and both moving bodies remain intact.
           </p>
         </div>
-        <LongRolloutViewer />
-      </section>
-
-      <section className={styles.liveSection} aria-labelledby="live-title">
-        <div className={styles.sectionHeading}>
-          <div>
-            <p className={styles.sectionIndex}>06 / PLAY THE MODEL</p>
-            <h2 id="live-title">Drive the frozen dream.</h2>
-          </div>
-          <p>
-            Diffusion works, but its iterative solver is too slow for play. A second model directly
-            regresses the next latent in one transformer pass. Load it onto your browser GPU and steer
-            with WASD—no simulator or diffusion solver runs underneath it.
-          </p>
-        </div>
-        <LiveWorldModel />
+        <figure className={styles.pixelRolloutFigure}>
+          <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/blocket-league/passive/rollout.png`} width={2356} height={658} unoptimized alt="Observed context, true future, and pixel-transformer prediction across twelve frames." />
+          <figcaption><span>8 observed frames → 12 autonomous predictions</span><span>0.88 px short-horizon · 6.88 px over 64 frames</span></figcaption>
+        </figure>
       </section>
 
       <section className={styles.interpretabilitySection} aria-labelledby="interpretability-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionIndex}>07 / OPEN THE MODEL</p>
-            <h2 id="interpretability-title">Can we find—and steer—the physics?</h2>
+            <p className={styles.sectionIndex}>04 / OPEN THE MODEL</p>
+            <h2 id="interpretability-title">The hidden velocity becomes writable.</h2>
           </div>
           <p>
-            Now open the direct transformer that powers the browser game. Linear probes test whether
-            position and velocity are readable; activation writes test whether those representations
-            actually control the hallucinated physics.
+            Velocity becomes increasingly readable as pixels pass through the six blocks. More
+            importantly, one direction found on a fit split changes motion across unseen worlds—even
+            after the write stops.
           </p>
         </div>
-        <InterpretabilityViewer />
+        <PixelInterpretabilityViewer />
+      </section>
+
+      <section className={styles.liveSection} aria-labelledby="live-title">
+        <div className={styles.sectionHeading}>
+          <div>
+            <p className={styles.sectionIndex}>05 / PLAY THE INTERVENTION</p>
+            <h2 id="live-title">The controls are brain surgery.</h2>
+          </div>
+          <p>
+            The model never trained on keystrokes. Here, WASD is mapped directly onto the recovered
+            ±x and ±y activation directions for the green circle. The white puck moves only when the
+            hallucinated physics says it should.
+          </p>
+        </div>
+        <LiveWorldModel />
       </section>
 
       <section className={styles.scaleSection} aria-labelledby="scale-title">
         <div className={styles.scaleIntro}>
-          <p className={styles.sectionIndex}>08 / NEXT WORLDS</p>
+          <p className={styles.sectionIndex}>06 / NEXT WORLDS</p>
           <h2 id="scale-title">Add one difficulty at a time.</h2>
         </div>
         <ol className={styles.ladder}>
@@ -543,7 +439,7 @@ export function BlocketLeagueLab() {
 
       <footer className={styles.footer}>
         <span>BLOCKET LEAGUE · WORLD 01</span>
-        <span>PIXELS → REPRESENTATION → PHYSICS → INTERVENTION</span>
+        <span>PIXELS → PREDICTION → HIDDEN PHYSICS → INTERVENTION</span>
       </footer>
     </main>
   );

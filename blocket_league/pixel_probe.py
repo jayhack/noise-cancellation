@@ -214,7 +214,7 @@ def run_pixel_interpretability(
     random_direction = torch.randn(model.config.hidden_size, generator=generator, device=device)
     random_direction /= random_direction.norm().clamp_min(1e-8)
 
-    effects = {"x_plus": [], "x_minus": [], "random": []}
+    effects = {"x_plus": [], "x_minus": [], "y_plus": [], "y_minus": [], "random": []}
     for start in range(0, test_samples, batch_size):
         classes = _context_batch(test_seeds[start:start + batch_size], model, device)
         baseline = _rollout(model, classes, rollout_frames)
@@ -224,19 +224,28 @@ def run_pixel_interpretability(
                          direction=directions[0], strength=-strength, write_frames=write_frames)
         random = _rollout(model, classes, rollout_frames, block_index=best_block,
                           direction=random_direction, strength=strength, write_frames=write_frames)
-        baseline_x = _visual_centroid(baseline, PLAYER_CLASSES)[..., 0]
-        for name, rollout in (("x_plus", plus), ("x_minus", minus), ("random", random)):
-            delta = _visual_centroid(rollout, PLAYER_CLASSES)[..., 0] - baseline_x
+        y_plus = _rollout(model, classes, rollout_frames, block_index=best_block,
+                          direction=directions[1], strength=strength, write_frames=write_frames)
+        y_minus = _rollout(model, classes, rollout_frames, block_index=best_block,
+                           direction=directions[1], strength=-strength, write_frames=write_frames)
+        baseline_position = _visual_centroid(baseline, PLAYER_CLASSES)
+        for name, rollout in (
+            ("x_plus", plus), ("x_minus", minus),
+            ("y_plus", y_plus), ("y_minus", y_minus), ("random", random),
+        ):
+            axis = 1 if name.startswith("y_") else 0
+            delta = _visual_centroid(rollout, PLAYER_CLASSES)[..., axis] - baseline_position[..., axis]
             release_index = min(write_frames - 1, rollout_frames - 1)
             effects[name].append(torch.stack((delta[:, release_index], delta[:, -1]), dim=1).cpu())
 
     summarized = {}
     for name, chunks in effects.items():
         values = torch.cat(chunks)
-        expected_sign = -1 if name == "x_minus" else 1
+        expected_sign = -1 if name.endswith("minus") else 1
+        axis = "y" if name.startswith("y_") else "x"
         summarized[name] = {
-            "release_x_delta_px": float(values[:, 0].mean()),
-            "final_x_delta_px": float(values[:, 1].mean()),
+            f"release_{axis}_delta_px": float(values[:, 0].mean()),
+            f"final_{axis}_delta_px": float(values[:, 1].mean()),
             "post_release_growth_px": float((values[:, 1] - values[:, 0]).mean()),
             "samples": int(values.shape[0]),
         }

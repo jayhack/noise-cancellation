@@ -211,30 +211,29 @@ uvx --from modal modal run blocket_league/modal_app.py \
 
 ### Browser player
 
-The lab's final exhibit runs the frozen direct latent transformer and palette decoder
-entirely in the browser through ONNX Runtime WebGPU. It starts from eight
-pre-encoded latents, so the 22M-parameter DINO encoder is not part of the live
-runtime. Each two-frame update requires one transformer evaluation rather than
-multiple flow-solver evaluations. The checked-in FP32 graphs are 22.8 MiB:
-3.67M transformer parameters plus the 2.22M-parameter decoder.
+The lab's final exhibit runs the frozen passive pixel transformer entirely in
+the browser through ONNX Runtime WebGPU. It starts from eight exact 64x64 pixel
+frames and predicts one new frame per forward pass. Arrow keys or WASD do not
+enter the model as actions. Instead, they write the recovered x/y velocity
+directions into the block-6 spatial token containing the green circle; the
+white puck remains uncontrolled. The checked-in FP32 graph is 14.2 MB and
+contains all 3.67M parameters.
 
 Regenerate the checked-in browser graphs and starter state with:
 
 ```bash
 uv run --python 3.12 \
-  --with torch --with numpy --with pillow --with transformers \
+  --with torch --with numpy --with pillow \
   --with onnx --with onnxscript --with onnxruntime \
-  python -m blocket_league.export_browser_direct \
-  blocket_league/outputs/direct-tiny-30000/checkpoint.pt \
+  python -m blocket_league.export_browser_pixel \
+  blocket_league/outputs/passive-pixel-direct-tiny-30000/checkpoint.pt \
+  blocket_league/outputs/passive-pixel-interpretability-xy/passive-pixel-manifest.json \
   public/blocket-league/live
 ```
 
-The exporter validates both ONNX graphs against PyTorch before writing the
-manifest. Chrome/Edge use WebGPU; unsupported browsers fall back to WASM.
-
-The original diffusion browser graph remains reproducible with
-`blocket_league.export_browser`; the checked-in live exhibit uses the direct
-one-pass graph.
+The exporter checks class agreement and logit error against PyTorch before
+writing the graph, starter context, and intervention manifest. Chrome/Edge use
+WebGPU; unsupported browsers fall back to WASM.
 
 ## Strong baseline
 
