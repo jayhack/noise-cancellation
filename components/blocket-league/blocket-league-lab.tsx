@@ -267,7 +267,8 @@ export function BlocketLeagueLab() {
           </div>
           <p>
             Every clip begins with randomized momentum. After that, the two circles simply coast,
-            collide, bounce, and score. The training set contains pixels—not actions or state vectors.
+            collide, bounce, and score. Goal-centered clips teach the pause and a moving kickoff
+            selected by the visible score. The training set contains pixels—not actions or state vectors.
           </p>
         </div>
 
@@ -383,13 +384,13 @@ export function BlocketLeagueLab() {
             <h2 id="prediction-title">It keeps both circles in motion.</h2>
           </div>
           <p>
-            On 128 unseen worlds, the model averages 0.88 pixels of entity-position error through
+            On 128 unseen worlds, the model averages 1.00 pixel of entity-position error through
             frame 12. At frame 64 it has drifted, but the board and both moving bodies remain intact.
           </p>
         </div>
         <figure className={styles.pixelRolloutFigure}>
           <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/blocket-league/passive/rollout.png`} width={2356} height={658} unoptimized alt="Observed context, true future, and pixel-transformer prediction across twelve frames." />
-          <figcaption><span>8 observed frames → 12 autonomous predictions</span><span>0.88 px short-horizon · 6.88 px over 64 frames</span></figcaption>
+          <figcaption><span>8 observed frames → 12 autonomous predictions</span><span>1.00 px short-horizon · 7.55 px over 64 frames</span></figcaption>
         </figure>
       </section>
 

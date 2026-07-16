@@ -9,7 +9,7 @@ import torch
 from torch import nn
 
 from blocket_league.codec import RepresentationCodec, RepresentationCodecConfig, fake_backbone_outputs
-from blocket_league.data import make_clip, make_passive_clip
+from blocket_league.data import make_clip, make_passive_clip, passive_kickoff_state
 from blocket_league.direct_model import DirectLatentTransformer, DirectWorldModelConfig
 from blocket_league.latent_model import CausalLatentDiT, FlowMatchingSchedule, LatentWorldModelConfig
 from blocket_league.latent_probe import (
@@ -68,6 +68,28 @@ class BlocketLeagueModelTests(unittest.TestCase):
         self.assertEqual(clip["state"].shape, (8, 10))
         displacement = abs(clip["state"][-1, :8] - clip["state"][0, :8]).sum()
         self.assertGreater(displacement, 0.01)
+
+    def test_goal_centered_passive_clips_restart_with_momentum(self) -> None:
+        clip = make_passive_clip(
+            17,
+            context_frames=1,
+            future_frames=23,
+            image_size=32,
+            goal_centered=True,
+        )
+        kickoff_indices = torch.from_numpy((clip["events"] == 5).nonzero()[0])
+        self.assertGreater(len(kickoff_indices), 0)
+        kickoff = int(kickoff_indices[0])
+        player_speed = float(torch.from_numpy(clip["state"][kickoff, 2:4]).norm())
+        puck_speed = float(torch.from_numpy(clip["state"][kickoff, 6:8]).norm())
+        self.assertGreater(player_speed, 0.2)
+        self.assertGreater(puck_speed, 0.18)
+        score = int(clip["state"][kickoff, 8])
+        expected = passive_kickoff_state(score)
+        self.assertTrue(torch.allclose(torch.from_numpy(clip["state"][kickoff, :2]), torch.from_numpy(expected[0])))
+        self.assertTrue(torch.allclose(torch.from_numpy(clip["state"][kickoff, 2:4]), torch.from_numpy(expected[1])))
+        self.assertTrue(torch.allclose(torch.from_numpy(clip["state"][kickoff, 4:6]), torch.from_numpy(expected[2])))
+        self.assertTrue(torch.allclose(torch.from_numpy(clip["state"][kickoff, 6:8]), torch.from_numpy(expected[3])))
 
     def test_direct_latent_transformer_predicts_and_rolls_out_in_one_pass(self) -> None:
         config = DirectWorldModelConfig(

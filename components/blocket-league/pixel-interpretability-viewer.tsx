@@ -68,6 +68,9 @@ export function PixelInterpretabilityViewer() {
   const positionPoints = manifest.probes.map((probe, index) => `${x(index)},${y(probe.position_r2)}`).join(" ");
   const velocityPoints = manifest.probes.map((probe, index) => `${x(index)},${y(probe.velocity_r2)}`).join(" ");
   const bestVelocity = Math.max(...manifest.probes.map((probe) => probe.velocity_r2));
+  const bestProbe = manifest.probes.reduce((best, probe) => (
+    probe.velocity_r2 > best.velocity_r2 ? probe : best
+  ));
   const plus = manifest.causal.effects.x_plus;
   const minus = manifest.causal.effects.x_minus;
   const yPlus = manifest.causal.effects.y_plus;
@@ -84,8 +87,8 @@ export function PixelInterpretabilityViewer() {
       </div>
 
       <div className={styles.evidenceStrip}>
-        <div><span>PREDICTION</span><strong>0.88 px</strong><small>mean entity error · frames 1–12</small></div>
-        <div><span>READOUT</span><strong>{score(bestVelocity)} R²</strong><small>green-circle velocity · block 6</small></div>
+        <div><span>PREDICTION</span><strong>1.00 px</strong><small>mean entity error · frames 1–12</small></div>
+        <div><span>READOUT</span><strong>{score(bestVelocity)} R²</strong><small>green-circle velocity · block {bestProbe.block}</small></div>
         <div className={styles.evidenceCausal}><span>CAUSAL WRITE</span><strong>+{plus.final_x_delta_px?.toFixed(2)} px</strong><small>four writes · measured at frame 12</small></div>
       </div>
 
@@ -107,10 +110,10 @@ export function PixelInterpretabilityViewer() {
           </svg>
         </div>
         <aside className={styles.probeDetail}>
-          <div className={styles.probeDetailTitle}><span>BLOCK 6</span><strong>{score(bestVelocity)} R²</strong></div>
+          <div className={styles.probeDetailTitle}><span>BLOCK {bestProbe.block}</span><strong>{score(bestVelocity)} R²</strong></div>
           <dl className={styles.probeTargets}>
-            <div><dt>position</dt><dd>{score(manifest.probes[5].position_r2)}</dd></div>
-            <div><dt>velocity</dt><dd>{score(manifest.probes[5].velocity_r2)}</dd></div>
+            <div><dt>position</dt><dd>{score(bestProbe.position_r2)}</dd></div>
+            <div><dt>velocity</dt><dd>{score(bestProbe.velocity_r2)}</dd></div>
             <div><dt>action features</dt><dd>none</dd></div>
             <div><dt>label source</dt><dd>pixels</dd></div>
           </dl>

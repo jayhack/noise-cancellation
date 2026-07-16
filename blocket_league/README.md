@@ -169,6 +169,11 @@ initial momentum; after initialization they evolve only through drag, walls,
 goals, and disc collisions. The checkpoint consumes the world's exact
 nine-color rendered pixels through an ordinary learned patch projection and
 predicts the next pixel class. It has no action input or action parameters.
+Thirty-five percent of cached clips are goal-centered: they include the score,
+seven-frame pause, reset, and a moving post-goal round. Existing scores are
+randomized across these clips so every scoreboard state appears at reset. The
+moving kickoff is deterministic from that visible score, keeping the passive
+world fully observable from pixels.
 
 ```bash
 uvx --from modal modal run blocket_league/modal_app.py \
@@ -181,20 +186,25 @@ uvx --from modal modal run blocket_league/modal_app.py \
   --patch-size 4 \
   --latent-cache-samples 16384 \
   --latent-rollout-frames 64 \
+  --goal-centered-fraction 0.35 \
   --eval-samples 128 \
   --gpu H100 \
   --output-dir blocket_league/outputs/passive-pixel-direct-tiny-30000
 ```
 
-The 3.67M-parameter model reaches 0.88 px mean entity error across the first 12
-autoregressive frames and 6.88 px over 64 frames. A post-hoc block-6 linear
-probe recovers visually measured large-disc velocity at 0.92 R² on 256 held-out
-clips. A single downstream-averaged +x activation direction, fit on a separate
-512-clip split and written for only four frames, leaves the disc +1.38 px from
-baseline after 12 frames with 79.3% sign consistency. The displacement grows by
-another +0.79 px after writes stop; a matched random direction ends at -0.07 px.
-The assay uses rendered pixels for its readout and routing, never simulator
-state or action labels.
+The 3.67M-parameter model reaches 1.00 px mean entity error across the first 12
+autoregressive frames and 7.55 px over 64 frames. On goal-centered clips it
+crosses the reset at 0.18 px short-horizon error while retaining both entities.
+A post-hoc block-5 linear probe recovers visually measured large-disc velocity
+at 0.91 R² on 256 held-out clips. A single downstream-averaged +x activation
+direction, fit on a separate 512-clip split and written for only four frames,
+leaves the disc +3.38 px from baseline after 12 frames with 86.7% sign
+consistency. The displacement grows by another +2.00 px after writes stop; a
+matched random direction ends at -0.47 px. Immediately after a reset, holding
+that same +x write for all 12 frames produces +3.10 px with 87.1% sign
+consistency. Brief writes at kickoff do not persist after release. The assay
+uses rendered pixels for its readout and routing, never simulator state or
+action labels.
 
 Run the assay with:
 
@@ -215,7 +225,7 @@ The lab's final exhibit runs the frozen passive pixel transformer entirely in
 the browser through ONNX Runtime WebGPU. It starts from eight exact 64x64 pixel
 frames and predicts one new frame per forward pass. Arrow keys or WASD do not
 enter the model as actions. Instead, they write the recovered x/y velocity
-directions into the block-6 spatial token containing the green circle; the
+directions into the block-5 spatial token containing the green circle; the
 white puck remains uncontrolled. The checked-in FP32 graph is 14.2 MB and
 contains all 3.67M parameters.
 

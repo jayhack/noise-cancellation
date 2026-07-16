@@ -537,6 +537,7 @@ def main(
     latent_rollout_frames: int = 24,
     latent_cache_samples: int = 16_384,
     pixel_history_frames: int = 8,
+    goal_centered_fraction: float = 0.35,
     integration_steps: int = 10,
     codec_feature_weight: float = 1.0,
     latent_dim: int = 32,
@@ -559,6 +560,8 @@ def main(
         raise ValueError("gpu must be L4, A100, or H100")
     if not 0.0 <= rollout_context_fraction <= 1.0:
         raise ValueError("rollout_context_fraction must be in [0, 1]")
+    if not 0.0 <= goal_centered_fraction <= 1.0:
+        raise ValueError("goal_centered_fraction must be in [0, 1]")
     if stage in {"codec", "latent", "direct", "pixel-direct"} and gpu != "H100":
         raise ValueError("The representation-codec stages currently run on H100")
     if probe_checkpoint:
@@ -880,6 +883,7 @@ def main(
                 "history_frames": pixel_history_frames,
                 "rollout_frames": latent_rollout_frames,
                 "cache_samples": latent_cache_samples,
+                "goal_centered_fraction": goal_centered_fraction,
                 "late_frame_weight": late_frame_weight,
                 "ema_decay": ema_decay,
                 "warmup_steps": warmup_steps,

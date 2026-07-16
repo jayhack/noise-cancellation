@@ -104,15 +104,20 @@ export function resetRound(state: WorldState, resetScore = false) {
 }
 
 export function resetPassiveRound(state: WorldState, resetScore = false) {
-  state.playerPosition = { x: 0.24 + random(state) * 0.28, y: 0.2 + random(state) * 0.6 };
-  state.puckPosition = { x: 0.55 + random(state) * 0.25, y: 0.2 + random(state) * 0.6 };
-  const playerAngle = random(state) * Math.PI * 2;
-  const puckAngle = playerAngle + Math.PI + (random(state) - 0.5) * 0.8;
-  const playerSpeed = 0.34 + random(state) * 0.34;
-  const puckSpeed = 0.24 + random(state) * 0.34;
+  if (resetScore) state.score = 0;
+  const phase = state.score % 5;
+  const playerAngle = resetScore ? random(state) * Math.PI * 2 : 0.35 + phase * (Math.PI * 2 / 5);
+  const puckAngle = resetScore ? playerAngle + Math.PI + (random(state) - 0.5) * 0.8 : playerAngle + Math.PI + 0.42;
+  const playerSpeed = resetScore ? 0.34 + random(state) * 0.34 : 0.48;
+  const puckSpeed = resetScore ? 0.24 + random(state) * 0.34 : 0.38;
+  state.playerPosition = resetScore
+    ? { x: 0.24 + random(state) * 0.28, y: 0.2 + random(state) * 0.6 }
+    : { x: 0.27, y: 0.34 + 0.08 * phase };
+  state.puckPosition = resetScore
+    ? { x: 0.55 + random(state) * 0.25, y: 0.2 + random(state) * 0.6 }
+    : { x: 0.58, y: 0.66 - 0.08 * phase };
   state.playerVelocity = { x: Math.cos(playerAngle) * playerSpeed, y: Math.sin(playerAngle) * playerSpeed };
   state.puckVelocity = { x: Math.cos(puckAngle) * puckSpeed, y: Math.sin(puckAngle) * puckSpeed };
-  if (resetScore) state.score = 0;
   state.resetTimer = 0;
   state.lastEvent = "kickoff";
 }

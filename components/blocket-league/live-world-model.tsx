@@ -190,6 +190,7 @@ export function LiveWorldModel() {
   const [modelLoaded, setModelLoaded] = useState(false);
   const [modelMegabytes, setModelMegabytes] = useState(14.2);
   const [modelParameters, setModelParameters] = useState(3_667_992);
+  const [interventionLabel, setInterventionLabel] = useState("block 5 · 8σ");
   const [inputAction, setInputAction] = useState(0);
   const [generatedFrames, setGeneratedFrames] = useState(0);
   const [frameMilliseconds, setFrameMilliseconds] = useState<number | null>(null);
@@ -240,6 +241,7 @@ export function LiveWorldModel() {
       }
       setModelMegabytes(manifest.modelBytes / 1_048_576);
       setModelParameters(manifest.modelParameters);
+      setInterventionLabel(`block ${manifest.interventionBlock} · ${manifest.interventionStrength}σ`);
       let loaded = 0;
       setLoadLabel(`DOWNLOADING ${(manifest.modelBytes / 1_048_576).toFixed(1)} MB · LOCAL ONLY`);
       const [modelBytes, starterBytes] = await Promise.all([
@@ -424,7 +426,7 @@ export function LiveWorldModel() {
             <div><span>HEADROOM</span><strong>{theoreticalFps ? `${theoreticalFps.toFixed(0)} fps` : "—"}</strong></div>
             <div><span>WRITE</span><strong>{ACTION_NAMES[inputAction]}</strong></div>
           </div>
-          <div className={styles.liveQuality}><div><Gauge aria-hidden="true" /><span>INTERVENTION</span></div><div><button type="button" className={styles.liveQualityActive}>block 6 · 8σ</button></div></div>
+          <div className={styles.liveQuality}><div><Gauge aria-hidden="true" /><span>INTERVENTION</span></div><div><button type="button" className={styles.liveQualityActive}>{interventionLabel}</button></div></div>
           <div className={styles.pad} aria-label="Hidden-state direction pad">
             {PAD_ACTIONS.map((action, index) => (
               <button key={action} type="button" className={[action === 0 ? styles.padCenter : "", inputAction === action ? styles.padActive : ""].filter(Boolean).join(" ") || undefined} aria-label={`${ACTION_NAMES[action]} activation write`} aria-pressed={inputAction === action} data-input-active={inputAction === action ? "true" : "false"} onPointerDown={() => beginManualAction(action)} onPointerUp={endManualAction} onPointerCancel={endManualAction} onPointerLeave={endManualAction}>{PAD_LABELS[index]}</button>
@@ -434,7 +436,7 @@ export function LiveWorldModel() {
             {status === "running" ? <button type="button" onClick={() => { stopPlayback(); setStatus("paused"); }}><Pause aria-hidden="true" /> Pause dream</button> : <button type="button" onClick={startPlayback} disabled={!modelLoaded || status === "loading"}><Play aria-hidden="true" /> Enter dream</button>}
             <button type="button" onClick={resetDream} disabled={!modelLoaded}><RotateCcw aria-hidden="true" /> Reset rollout</button>
           </div>
-          <p className={styles.liveHint}>Hold WASD or arrow keys to write the recovered velocity directions into the green circle&apos;s block-6 activation. The white puck has no controls.</p>
+          <p className={styles.liveHint}>Hold WASD or arrow keys to keep writing the recovered velocity directions into the green circle&apos;s spatial activation. The white puck has no controls.</p>
         </aside>
       </div>
     </div>

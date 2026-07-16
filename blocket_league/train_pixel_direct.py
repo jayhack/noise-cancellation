@@ -41,6 +41,7 @@ class PixelDirectTrainConfig:
     metric_boundary: int = 12
     cache_samples: int = 16_384
     cache_batch_size: int = 64
+    goal_centered_fraction: float = 0.35
     corruption_rate: float = 0.06
     late_frame_weight: float = 2.0
     ema_decay: float = 0.9995
@@ -93,6 +94,7 @@ def build_pixel_cache(config: PixelDirectTrainConfig, device: torch.device):
         seed=config.seed,
         frames=config.cache_frames,
         image_size=config.image_size,
+        goal_centered_fraction=config.goal_centered_fraction,
     )
     loader = DataLoader(dataset, batch_size=config.cache_batch_size, num_workers=config.workers,
                         pin_memory=device.type == "cuda", persistent_workers=config.workers > 0)
@@ -145,12 +147,19 @@ def rollout_pixel_classes(model, context, rollout_frames):
     return torch.stack(generated, dim=1)
 
 
-def held_out_clip(seed: int, config: PixelDirectTrainConfig, device: torch.device):
+def held_out_clip(
+    seed: int,
+    config: PixelDirectTrainConfig,
+    device: torch.device,
+    *,
+    goal_centered: bool = False,
+):
     clip = make_passive_clip(
         seed,
         context_frames=config.history_frames,
         future_frames=config.rollout_frames,
         image_size=config.image_size,
+        goal_centered=goal_centered,
     )
     first = torch.from_numpy(clip["context"].copy()).permute(0, 3, 1, 2)
     rest = torch.from_numpy(clip["target"].copy()).permute(0, 3, 1, 2)
@@ -164,13 +173,18 @@ def held_out_clip(seed: int, config: PixelDirectTrainConfig, device: torch.devic
 
 
 @torch.no_grad()
-def evaluate_pixel_direct(model, config, device):
+def evaluate_pixel_direct(model, config, device, *, goal_centered: bool = False):
     palette = palette_tensor(device)
     short_totals: dict[str, float] = {}
     long_totals: dict[str, float] = {}
     batch_size = min(config.batch_size, 8)
     for start in range(0, config.eval_samples, batch_size):
-        items = [held_out_clip(config.seed + 2_000_000 + index, config, device)
+        items = [held_out_clip(
+                     config.seed + 2_000_000 + index,
+                     config,
+                     device,
+                     goal_centered=goal_centered,
+                 )
                  for index in range(start, min(start + batch_size, config.eval_samples))]
         context_video = torch.stack([item["context"] for item in items])
         target = torch.stack([item["target"] for item in items])
@@ -198,6 +212,8 @@ def evaluate_pixel_direct(model, config, device):
 def train_pixel_direct(config: PixelDirectTrainConfig) -> dict[str, Any]:
     if config.cache_frames <= config.history_frames:
         raise ValueError("cache_frames must exceed history_frames")
+    if not 0.0 <= config.goal_centered_fraction <= 1.0:
+        raise ValueError("goal_centered_fraction must be in [0, 1]")
     _seed_everything(config.seed)
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -258,6 +274,7 @@ def train_pixel_direct(config: PixelDirectTrainConfig) -> dict[str, Any]:
     save_rollout_comparison(output_dir / "rollout-long.png", preview_context[0, -6:],
                             preview_target[0, -12:], prediction[0, -12:])
     evaluation = evaluate_pixel_direct(ema_model, config, device)
+    post_goal_evaluation = evaluate_pixel_direct(ema_model, config, device, goal_centered=True)
     checkpoint = {"kind": "passive_direct_pixel_world_model", "model": ema_model.state_dict(),
                   "model_config": model_config.to_dict(), "train_config": asdict(config),
                   "palette": np.stack(tuple(PALETTE.values())), "step": config.steps}
@@ -270,6 +287,7 @@ def train_pixel_direct(config: PixelDirectTrainConfig) -> dict[str, Any]:
                "final_loss": losses[-1], "loss_ema_50": float(np.mean(losses[-50:])),
                "class_frequencies": frequencies.cpu().tolist(), "class_weights": class_weights.cpu().tolist(),
                "evaluation": evaluation,
+               "post_goal_evaluation": post_goal_evaluation,
                "artifacts": ["checkpoint.pt", "rollout.png", "rollout-long.png", "train.jsonl", "summary.json"]}
     (output_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return summary
