@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "frameSize": 64,
+  "totalFrames": 18,
+  "playbackFps": 6,
+  "temporalDownsample": 2,
+  "latentGrid": 8,
+  "latentChannels": 32,
+  "compressionRatio": 12.0,
+  "checkpointStep": 4000,
+  "scenarios": [
+    {
+      "id": "open-ice",
+      "title": "Open ice",
+      "description": "A clean acceleration arc with changing actions.",
+      "atlas": "/blocket-league/codec/open-ice.png"
+    },
+    {
+      "id": "bank-shot",
+      "title": "Bank shot",
+      "description": "The puck meets the wall, then the player.",
+      "atlas": "/blocket-league/codec/bank-shot.png"
+    },
+    {
+      "id": "goal-reset",
+      "title": "Goal + reset",
+      "description": "A scored goal crosses an abrupt state reset.",
+      "atlas": "/blocket-league/codec/goal-reset.png"
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "version": 2,
+  "modelKind": "direct-autoregressive",
+  "checkpointStep": 30000,
+  "seed": 23117,
+  "sourceFps": 20,
+  "frameSize": 64,
+  "latentChannels": 32,
+  "latentGrid": 8,
+  "historyLatents": 8,
+  "sequenceLatents": 9,
+  "temporalDownsample": 2,
+  "historyNoiseLevel": 0.0,
+  "defaultIntegrationSteps": 1,
+  "modelParameters": 3666656,
+  "decoderParameters": 2215305,
+  "modelBytes": 14877019,
+  "decoderBytes": 9012888,
+  "palette": [
+    [
+      7,
+      11,
+      16
+    ],
+    [
+      11,
+      28,
+      31
+    ],
+    [
+      31,
+      64,
+      65
+    ],
+    [
+      81,
+      103,
+      105
+    ],
+    [
+      238,
+      181,
+      62
+    ],
+    [
+      50,
+      213,
+      173
+    ],
+    [
+      11,
+      57,
+      52
+    ],
+    [
+      239,
+      242,
+      233
+    ],
+    [
+      150,
+      161,
+      153
+    ]
+  ],
+  "assets": {
+    "dynamics": "/blocket-league/live/dynamics.onnx",
+    "decoder": "/blocket-league/live/decoder.onnx",
+    "starterContext": "/blocket-league/live/starter-context.bin",
+    "starterActions": "/blocket-league/live/starter-actions.bin",
+    "starterFrame": "/blocket-league/live/starter-frame.png"
+  },
+  "validation": {
+    "dynamicsMaxAbsoluteError": 3.337860107421875e-06,
+    "dynamicsMeanAbsoluteError": 3.5193079384043813e-07,
+    "decoderMaxAbsoluteError": 1.430511474609375e-05,
+    "decoderMeanAbsoluteError": 1.213455902870919e-06,
+    "decoderClassAgreement": 1.0
+  }
+}
