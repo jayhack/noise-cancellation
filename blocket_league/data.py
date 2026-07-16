@@ -68,6 +68,104 @@ def make_clip(
     }
 
 
+def make_passive_clip(
+    seed: int,
+    *,
+    context_frames: int = 8,
+    future_frames: int = 64,
+    image_size: int = 64,
+) -> dict[str, np.ndarray]:
+    """Render collision-rich physics without an action or control channel.
+
+    Both discs receive randomized initial momentum and then coast.  The larger
+    disc uses the same low drag as the puck so its motion remains an autonomous
+    part of the physical state rather than an unobserved player input.
+    """
+
+    rng = np.random.default_rng(seed)
+    config = WorldConfig(
+        image_size=image_size,
+        player_acceleration=0.0,
+        player_drag=0.12,
+        puck_drag=0.12,
+    )
+    env = BlocketLeagueEnv(seed=seed, config=config)
+    state = env.state
+
+    # Rejection sample two separated discs. A substantial fraction are aimed
+    # toward one another so collisions are common without privileged controls.
+    for _ in range(100):
+        player = rng.uniform((0.14, 0.14), (0.72, 0.86)).astype(np.float32)
+        puck = rng.uniform((0.28, 0.14), (0.86, 0.86)).astype(np.float32)
+        if np.linalg.norm(player - puck) > config.player_radius + config.puck_radius + 0.08:
+            break
+    state.player_position = player
+    state.puck_position = puck
+
+    def random_velocity(low: float = 0.22, high: float = 0.72) -> np.ndarray:
+        angle = rng.uniform(0.0, 2.0 * np.pi)
+        speed = rng.uniform(low, high)
+        return (speed * np.asarray((np.cos(angle), np.sin(angle)))).astype(np.float32)
+
+    if rng.random() < 0.6:
+        axis = puck - player
+        axis /= max(float(np.linalg.norm(axis)), 1e-6)
+        tangent = np.asarray((-axis[1], axis[0]), dtype=np.float32)
+        state.player_velocity = axis * rng.uniform(0.28, 0.68) + tangent * rng.uniform(-0.12, 0.12)
+        state.puck_velocity = -axis * rng.uniform(0.18, 0.58) + tangent * rng.uniform(-0.12, 0.12)
+    else:
+        state.player_velocity = random_velocity()
+        state.puck_velocity = random_velocity()
+    state.player_velocity = state.player_velocity.astype(np.float32)
+    state.puck_velocity = state.puck_velocity.astype(np.float32)
+
+    frame_count = context_frames + future_frames
+    frames: list[np.ndarray] = [env.render()]
+    states: list[np.ndarray] = [state.vector()]
+    events: list[int] = []
+    event_ids = {"coast": 0, "impact": 2, "wall": 3, "goal": 4, "kickoff": 5}
+    for _ in range(frame_count - 1):
+        env.step(0)
+        frames.append(env.render())
+        states.append(env.state.vector())
+        events.append(event_ids.get(env.state.last_event, 0))
+
+    frame_array = np.stack(frames)
+    state_array = np.stack(states)
+    return {
+        "frames": frame_array,
+        "context": frame_array[:context_frames],
+        "target": frame_array[context_frames:],
+        "state": state_array[context_frames:],
+        "events": np.asarray(events[context_frames - 1 :], dtype=np.int64),
+    }
+
+
+class PassiveClipDataset:
+    """Deterministic autonomous-physics videos with no action field."""
+
+    def __init__(self, samples: int, *, seed: int = 0, frames: int = 24, image_size: int = 64):
+        self.samples = samples
+        self.seed = seed
+        self.frames = frames
+        self.image_size = image_size
+
+    def __len__(self) -> int:
+        return self.samples
+
+    def __getitem__(self, index: int) -> object:
+        import torch
+
+        clip = make_passive_clip(
+            self.seed + index * 9_973,
+            context_frames=1,
+            future_frames=self.frames - 1,
+            image_size=self.image_size,
+        )
+        video = torch.from_numpy(clip["frames"].copy()).permute(0, 3, 1, 2).float()
+        return video.div(127.5).sub(1.0)
+
+
 class ClipDataset:
     """A deterministic map-style PyTorch dataset with no stored video corpus."""
 

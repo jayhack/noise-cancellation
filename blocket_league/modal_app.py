@@ -121,6 +121,16 @@ def _run_direct_training(
     return summary
 
 
+def _run_pixel_direct_training(job_id: str, train_config: dict[str, object]) -> dict[str, object]:
+    sys.path.insert(0, REMOTE_PROJECT)
+    from blocket_league.train_pixel_direct import PixelDirectTrainConfig, train_pixel_direct
+
+    output_dir = Path(REMOTE_RESULTS) / job_id
+    summary = train_pixel_direct(PixelDirectTrainConfig(output_dir=str(output_dir), **train_config))
+    results.commit()
+    return summary
+
+
 @app.function(
     image=image,
     gpu="L4",
@@ -228,6 +238,22 @@ def train_direct_remote_h100(
 
 @app.function(
     image=image,
+    gpu="H100",
+    cpu=16.0,
+    memory=65_536,
+    timeout=4 * 60 * 60,
+    single_use_containers=True,
+    volumes={REMOTE_RESULTS: results},
+)
+def train_pixel_direct_remote_h100(
+    job_id: str,
+    train_config: dict[str, object],
+) -> dict[str, object]:
+    return _run_pixel_direct_training(job_id, train_config)
+
+
+@app.function(
+    image=image,
     gpu="L4",
     cpu=8.0,
     memory=24_576,
@@ -304,6 +330,38 @@ def interpret_direct_checkpoint_remote(
         samples=samples,
         batch_size=batch_size,
         intervention_samples=intervention_samples,
+    )
+
+
+@app.function(
+    image=image,
+    gpu="H100",
+    cpu=16.0,
+    memory=65_536,
+    timeout=60 * 60,
+    single_use_containers=True,
+)
+def interpret_pixel_checkpoint_remote(
+    checkpoint_bytes: bytes,
+    fit_samples: int,
+    test_samples: int,
+    batch_size: int,
+    strength: float,
+) -> dict[str, object]:
+    sys.path.insert(0, REMOTE_PROJECT)
+    from blocket_league.pixel_probe import run_pixel_interpretability
+
+    checkpoint = Path("/tmp/passive-pixel-checkpoint.pt")
+    output = Path("/tmp/passive-pixel-interpretability.json")
+    checkpoint.write_bytes(checkpoint_bytes)
+    return run_pixel_interpretability(
+        checkpoint,
+        output,
+        fit_samples=fit_samples,
+        test_samples=test_samples,
+        batch_size=batch_size,
+        rollout_frames=12,
+        strength=strength,
     )
 
 
@@ -435,6 +493,7 @@ def main(
     probe_checkpoint: str = "",
     interpret_checkpoint: str = "",
     interpret_direct_checkpoint: str = "",
+    interpret_pixel_checkpoint: str = "",
     interpret_samples: int = 768,
     interpret_batch_size: int = 32,
     intervention_samples: int = 32,
@@ -477,6 +536,7 @@ def main(
     rollout_context_ddim_steps: int = 1,
     latent_rollout_frames: int = 24,
     latent_cache_samples: int = 16_384,
+    pixel_history_frames: int = 8,
     integration_steps: int = 10,
     codec_feature_weight: float = 1.0,
     latent_dim: int = 32,
@@ -487,8 +547,8 @@ def main(
     probe_samples: int = 0,
     keep_remote: bool = False,
 ) -> None:
-    if stage not in {"pixel", "codec", "latent", "direct"}:
-        raise ValueError("stage must be pixel, codec, latent, or direct")
+    if stage not in {"pixel", "codec", "latent", "direct", "pixel-direct"}:
+        raise ValueError("stage must be pixel, codec, latent, direct, or pixel-direct")
     if preset not in {"micro", "tiny", "small"}:
         raise ValueError("preset must be micro, tiny, or small")
     if prediction_type not in {"x0", "v", "epsilon"}:
@@ -499,7 +559,7 @@ def main(
         raise ValueError("gpu must be L4, A100, or H100")
     if not 0.0 <= rollout_context_fraction <= 1.0:
         raise ValueError("rollout_context_fraction must be in [0, 1]")
-    if stage in {"codec", "latent", "direct"} and gpu != "H100":
+    if stage in {"codec", "latent", "direct", "pixel-direct"} and gpu != "H100":
         raise ValueError("The representation-codec stages currently run on H100")
     if probe_checkpoint:
         checkpoint = Path(probe_checkpoint).expanduser().resolve()
@@ -558,6 +618,30 @@ def main(
         destination.write_text(json.dumps(interpretation, indent=2), encoding="utf-8")
         print(json.dumps(interpretation, indent=2))
         print(f"Direct interpretability results downloaded to: {destination}")
+        return
+    if interpret_pixel_checkpoint:
+        checkpoint = Path(interpret_pixel_checkpoint).expanduser().resolve()
+        if not checkpoint.is_file():
+            raise FileNotFoundError(checkpoint)
+        fit_samples = interpret_samples
+        test_samples = max(intervention_samples, 64)
+        interpretation = interpret_pixel_checkpoint_remote.remote(
+            checkpoint.read_bytes(),
+            fit_samples,
+            test_samples,
+            interpret_batch_size,
+            intervention_asset_strength,
+        )
+        destination_dir = (
+            Path(output_dir).expanduser().resolve()
+            if output_dir
+            else HERE.parent / "public" / "blocket-league" / "interpretability"
+        )
+        destination_dir.mkdir(parents=True, exist_ok=True)
+        destination = destination_dir / "passive-pixel-manifest.json"
+        destination.write_text(json.dumps(interpretation, indent=2), encoding="utf-8")
+        print(json.dumps(interpretation, indent=2))
+        print(f"Passive pixel interpretability results downloaded to: {destination}")
         return
     if trajectory_checkpoint:
         checkpoint = Path(trajectory_checkpoint).expanduser().resolve()
@@ -766,6 +850,51 @@ def main(
             except Exception as error:
                 print(f"Warning: could not remove remote artifacts: {error}")
         print(f"Direct latent transformer artifacts downloaded to: {destination}")
+        return
+    if stage == "pixel-direct":
+        job_id = f"pixel-direct-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
+        destination = (
+            Path(output_dir).expanduser().resolve()
+            if output_dir
+            else HERE / "outputs" / job_id
+        )
+        if destination.exists() and any(destination.iterdir()):
+            raise ValueError(f"Output directory is not empty: {destination}")
+        print(
+            f"Starting direct pixel transformer on Modal: "
+            f"{job_id} ({preset=}, {steps=}, {batch_size=})"
+        )
+        summary = train_pixel_direct_remote_h100.remote(
+            job_id,
+            {
+                "preset": preset,
+                "steps": steps,
+                "batch_size": batch_size,
+                "learning_rate": learning_rate,
+                "seed": seed,
+                "workers": workers,
+                "log_every": log_every,
+                "eval_samples": eval_samples,
+                "image_size": 64,
+                "patch_size": patch_size,
+                "history_frames": pixel_history_frames,
+                "rollout_frames": latent_rollout_frames,
+                "cache_samples": latent_cache_samples,
+                "late_frame_weight": late_frame_weight,
+                "ema_decay": ema_decay,
+                "warmup_steps": warmup_steps,
+            },
+        )
+        print(json.dumps(summary, indent=2))
+        count = _download(job_id, destination)
+        if count == 0:
+            raise RuntimeError(f"No direct pixel artifacts found for Modal job {job_id}")
+        if not keep_remote:
+            try:
+                results.remove_file(job_id, recursive=True)
+            except Exception as error:
+                print(f"Warning: could not remove remote artifacts: {error}")
+        print(f"Direct pixel transformer artifacts downloaded to: {destination}")
         return
     job_id = f"{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
     destination = (

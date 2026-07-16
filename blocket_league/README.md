@@ -161,6 +161,54 @@ mean entity error is 13.67 px (11.07 px player, 16.28 px puck); final-frame
 errors are 16.05 px and 24.90 px. Short rollouts remain crisp and coherent,
 while the 64-frame evaluation deliberately exposes accumulated state drift.
 
+### Passive raw-pixel transformer (no actions)
+
+The cleaner causal experiment removes both the pretrained representation codec
+and the control channel. The source videos contain two discs with randomized
+initial momentum; after initialization they evolve only through drag, walls,
+goals, and disc collisions. The checkpoint consumes the world's exact
+nine-color rendered pixels through an ordinary learned patch projection and
+predicts the next pixel class. It has no action input or action parameters.
+
+```bash
+uvx --from modal modal run blocket_league/modal_app.py \
+  --stage pixel-direct \
+  --preset tiny \
+  --steps 30000 \
+  --batch-size 16 \
+  --learning-rate 0.0003 \
+  --pixel-history-frames 8 \
+  --patch-size 4 \
+  --latent-cache-samples 16384 \
+  --latent-rollout-frames 64 \
+  --eval-samples 128 \
+  --gpu H100 \
+  --output-dir blocket_league/outputs/passive-pixel-direct-tiny-30000
+```
+
+The 3.67M-parameter model reaches 0.88 px mean entity error across the first 12
+autoregressive frames and 6.88 px over 64 frames. A post-hoc block-6 linear
+probe recovers visually measured large-disc velocity at 0.92 R² on 256 held-out
+clips. A single downstream-averaged +x activation direction, fit on a separate
+512-clip split and written for only four frames, leaves the disc +1.38 px from
+baseline after 12 frames with 79.3% sign consistency. The displacement grows by
+another +0.79 px after writes stop; a matched random direction ends at -0.07 px.
+The assay uses rendered pixels for its readout and routing, never simulator
+state or action labels.
+
+Run the assay with:
+
+```bash
+uvx --from modal modal run blocket_league/modal_app.py \
+  --interpret-pixel-checkpoint \
+    blocket_league/outputs/passive-pixel-direct-tiny-30000/checkpoint.pt \
+  --interpret-samples 512 \
+  --interpret-batch-size 32 \
+  --intervention-samples 256 \
+  --intervention-asset-strength 8 \
+  --output-dir blocket_league/outputs/passive-pixel-interpretability-strong
+```
+
 ### Browser player
 
 The lab's final exhibit runs the frozen direct latent transformer and palette decoder

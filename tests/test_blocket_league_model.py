@@ -9,7 +9,7 @@ import torch
 from torch import nn
 
 from blocket_league.codec import RepresentationCodec, RepresentationCodecConfig, fake_backbone_outputs
-from blocket_league.data import make_clip
+from blocket_league.data import make_clip, make_passive_clip
 from blocket_league.direct_model import DirectLatentTransformer, DirectWorldModelConfig
 from blocket_league.latent_model import CausalLatentDiT, FlowMatchingSchedule, LatentWorldModelConfig
 from blocket_league.latent_probe import (
@@ -20,6 +20,7 @@ from blocket_league.latent_probe import (
 )
 from blocket_league.metrics import trajectory_metrics
 from blocket_league.model import DiffusionSchedule, VideoDiT, VideoDiTConfig
+from blocket_league.pixel_direct_model import DirectPixelTransformer, PixelDirectConfig
 from blocket_league.trajectory_assets import sample_autoregressive
 from blocket_league.train import (
     TrainConfig,
@@ -31,6 +32,43 @@ from blocket_league.train_direct import direct_training_loss, rollout_latents
 
 
 class BlocketLeagueModelTests(unittest.TestCase):
+    def test_direct_pixel_transformer_predicts_palette_pixels(self) -> None:
+        config = PixelDirectConfig(
+            image_size=16,
+            patch_size=4,
+            history_frames=3,
+            pixel_embedding_size=4,
+            hidden_size=16,
+            depth=1,
+            heads=4,
+        )
+        model = DirectPixelTransformer(config)
+        frames = torch.randint(0, config.palette_size, (2, 3, 16, 16))
+        logits, hidden = model(frames, return_hidden=True)
+        self.assertEqual(logits.shape, (2, 3, config.palette_size, 16, 16))
+        self.assertEqual(hidden[-1].shape, (2, 3, 16, 16))
+        self.assertEqual(model.next_frame(frames).shape, (2, 16, 16))
+        self.assertFalse(any("action" in name for name, _ in model.named_parameters()))
+        direction = torch.randn(config.hidden_size)
+        mask = torch.zeros(2, 3, 16)
+        mask[:, -1, 5] = 1
+        edited = model(
+            frames,
+            intervention_block=0,
+            intervention=direction,
+            intervention_mask=mask,
+        )
+        baseline = model(frames)
+        self.assertFalse(torch.equal(baseline, edited))
+
+    def test_passive_clips_have_motion_without_action_labels(self) -> None:
+        clip = make_passive_clip(17, context_frames=4, future_frames=8, image_size=32)
+        self.assertNotIn("actions", clip)
+        self.assertEqual(clip["frames"].shape, (12, 32, 32, 3))
+        self.assertEqual(clip["state"].shape, (8, 10))
+        displacement = abs(clip["state"][-1, :8] - clip["state"][0, :8]).sum()
+        self.assertGreater(displacement, 0.01)
+
     def test_direct_latent_transformer_predicts_and_rolls_out_in_one_pass(self) -> None:
         config = DirectWorldModelConfig(
             latent_dim=4,
