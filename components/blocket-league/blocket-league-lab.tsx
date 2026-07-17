@@ -276,29 +276,20 @@ export function BlocketLeagueLab() {
           <span className={styles.mark}><CircleDot aria-hidden="true" /></span>
           <span>BLOCKET LEAGUE</span>
         </a>
-        <div className={styles.headerMeta}>
-          <span className={styles.statusDot} />
-          WORLD 01 · LIVE
-        </div>
       </header>
 
       <section className={styles.hero} id="top">
-        <p className={styles.eyebrow}>A MINIMAL WORLD MODEL EXPERIMENT</p>
         <h1>Can a tiny world model<br />discover the rules?</h1>
         <p className={styles.heroCopy}>
           Train a transformer only to watch pixels move. Find the velocity it invents.
           Then turn that hidden direction into the controls it never saw during training.
         </p>
-        <a className={styles.jumpLink} href="#world">
-          Enter the world <ArrowRight aria-hidden="true" />
-        </a>
       </section>
 
       <section className={styles.labSection} id="world" aria-labelledby="world-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionIndex}>01 / THE WORLD</p>
-            <h2 id="world-title">A world with no controls.</h2>
+            <h2 id="world-title">Train a video model on simple physics simulations.</h2>
           </div>
           <p>
             Every clip begins with randomized momentum. After that, the two circles simply coast,
@@ -310,7 +301,6 @@ export function BlocketLeagueLab() {
         <div className={styles.simulatorShell}>
           <div className={styles.canvasColumn}>
             <div className={styles.canvasHeader}>
-              <div className={styles.liveLabel}><span /> SIMULATOR</div>
               <div className={styles.score}>GOALS <strong>{snapshot.score.toString().padStart(2, "0")}</strong></div>
             </div>
             <canvas
@@ -375,8 +365,7 @@ export function BlocketLeagueLab() {
       <section className={styles.modelSection} aria-labelledby="model-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionIndex}>02 / THE ARCHITECTURE</p>
-            <h2 id="model-title">Previous frames become the next.</h2>
+            <h2 id="model-title">Pixel transformers work surprisingly well.</h2>
           </div>
           <p>
             The transformer is trained like a visual next-token predictor: previous rendered frames
@@ -449,14 +438,34 @@ export function BlocketLeagueLab() {
         </div>
       </section>
 
+      <section className={styles.trajectorySection} aria-labelledby="prediction-title">
+        <div className={styles.sectionHeading}>
+          <div>
+            <h2 id="prediction-title">It keeps both circles in motion.</h2>
+          </div>
+          <p>
+            On 128 unseen worlds, the model averages 0.93 pixels of entity-position error through
+            frame 12. It was also trained on its own predicted histories and split-disc corruptions,
+            so malformed circles are pulled back toward the game manifold instead of compounding.
+          </p>
+        </div>
+        <figure className={styles.pixelRolloutFigure}>
+          <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/blocket-league/passive/rollout.png`} width={2356} height={658} unoptimized alt="Observed context, true future, and pixel-transformer prediction across twelve frames." />
+          <figcaption><span>8 observed frames → 12 autonomous predictions</span><span>0.93 px short-horizon · 6.53 px over 64 frames</span></figcaption>
+        </figure>
+      </section>
+
       <section className={styles.lensSection} aria-labelledby="lens-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionIndex}>03 / TAKE THE LENS</p>
-            <h2 id="lens-title">Average what this activation can cause downstream.</h2>
+            <h2 id="lens-title">Hidden directions correspond to downstream physical effects.</h2>
           </div>
           <p>
-            The <a href="https://transformer-circuits.pub/2026/workspace/index.html#the-jacobian-lens" target="_blank" rel="noreferrer">J-space paper&apos;s Jacobian lens</a> averages how an intermediate activation changes future verbal outputs. Our physics analogue replaces words with the green disc&apos;s rendered x/y position.
+            Linear probes recover the green circle&apos;s position at 0.99 R² and its velocity at 0.90 R²
+            on unseen clips. To find directions that affect output—not merely correlate with it—we
+            adapt the <a href="https://transformer-circuits.pub/2026/workspace/index.html#the-jacobian-lens" target="_blank" rel="noreferrer">J-space paper&apos;s Jacobian lens</a> and average how hidden activations change
+            the next frame. Collision outcomes appear in the generated video, but we have not yet
+            isolated a single collision direction.
           </p>
         </div>
 
@@ -468,7 +477,7 @@ export function BlocketLeagueLab() {
           <div className={styles.lensFlow}>
             <div className={`${styles.lensStage} ${styles.lensContexts}`}>
               <div className={styles.diagramStageHeader}>
-                <span>01 / SAMPLE</span>
+                <span>SAMPLE</span>
                 <strong>512 worlds</strong>
                 <small>separate fit contexts</small>
               </div>
@@ -483,7 +492,7 @@ export function BlocketLeagueLab() {
 
             <div className={`${styles.lensStage} ${styles.lensActivation}`}>
               <div className={styles.diagramStageHeader}>
-                <span>02 / LOCATE</span>
+                <span>LOCATE</span>
                 <strong>h<sub>ℓ,p</sub> at block 5</strong>
                 <small>p = green spatial token</small>
               </div>
@@ -505,7 +514,7 @@ export function BlocketLeagueLab() {
 
             <div className={`${styles.lensStage} ${styles.lensReadout}`}>
               <div className={styles.diagramStageHeader}>
-                <span>03 / MEASURE</span>
+                <span>MEASURE</span>
                 <strong>Next-frame centroid</strong>
                 <small>soft readout from green logits</small>
               </div>
@@ -521,7 +530,7 @@ export function BlocketLeagueLab() {
 
             <div className={`${styles.lensStage} ${styles.lensDirections}`}>
               <div className={styles.diagramStageHeader}>
-                <span>04 / AVERAGE</span>
+                <span>AVERAGE</span>
                 <strong>Global directions</strong>
                 <small>reusable across unseen rollouts</small>
               </div>
@@ -554,34 +563,15 @@ export function BlocketLeagueLab() {
         </div>
       </section>
 
-      <section className={styles.trajectorySection} aria-labelledby="prediction-title">
-        <div className={styles.sectionHeading}>
-          <div>
-            <p className={styles.sectionIndex}>04 / THE PREDICTION</p>
-            <h2 id="prediction-title">It keeps both circles in motion.</h2>
-          </div>
-          <p>
-            On 128 unseen worlds, the model averages 0.93 pixels of entity-position error through
-            frame 12. It was also trained on its own predicted histories and split-disc corruptions,
-            so malformed circles are pulled back toward the game manifold instead of compounding.
-          </p>
-        </div>
-        <figure className={styles.pixelRolloutFigure}>
-          <Image src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/blocket-league/passive/rollout.png`} width={2356} height={658} unoptimized alt="Observed context, true future, and pixel-transformer prediction across twelve frames." />
-          <figcaption><span>8 observed frames → 12 autonomous predictions</span><span>0.93 px short-horizon · 6.53 px over 64 frames</span></figcaption>
-        </figure>
-      </section>
-
       <section className={styles.interpretabilitySection} aria-labelledby="interpretability-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionIndex}>05 / OPEN THE MODEL</p>
-            <h2 id="interpretability-title">The hidden velocity becomes writable.</h2>
+            <h2 id="interpretability-title">These variables are causal. Write to them and the hallucination changes.</h2>
           </div>
           <p>
-            Velocity becomes increasingly readable as pixels pass through the six blocks. More
-            importantly, one direction found on a fit split changes motion across unseen worlds—even
-            after the write stops.
+            Write the recovered +x direction for four frames, then stop. By frame 12, the green circle
+            is 3.51 pixels farther right on average across 256 unseen worlds, and 85.9% move in the
+            intended direction. A random activation direction has almost no effect.
           </p>
         </div>
         <PixelInterpretabilityViewer />
@@ -590,8 +580,7 @@ export function BlocketLeagueLab() {
       <section className={styles.liveSection} aria-labelledby="live-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionIndex}>06 / PLAY THE INTERVENTION</p>
-            <h2 id="live-title">The controls are brain surgery.</h2>
+            <h2 id="live-title">This is a video game. You play it through brain surgery.</h2>
           </div>
           <p>
             The model never trained on keystrokes. Here, WASD is mapped directly onto the recovered
@@ -602,23 +591,8 @@ export function BlocketLeagueLab() {
         <LiveWorldModel />
       </section>
 
-      <section className={styles.scaleSection} aria-labelledby="scale-title">
-        <div className={styles.scaleIntro}>
-          <p className={styles.sectionIndex}>07 / NEXT WORLDS</p>
-          <h2 id="scale-title">Add one difficulty at a time.</h2>
-        </div>
-        <ol className={styles.ladder}>
-          <li className={styles.ladderActive}><span>01</span><strong>Strike</strong><small>force · drag · impact</small></li>
-          <li><span>02</span><strong>Score</strong><small>events · resets · memory</small></li>
-          <li><span>03</span><strong>Defend</strong><small>coupled agents</small></li>
-          <li><span>04</span><strong>Occlude</strong><small>object permanence</small></li>
-          <li><span>05</span><strong>Shift</strong><small>variable world rules</small></li>
-        </ol>
-      </section>
-
       <footer className={styles.footer}>
-        <span>BLOCKET LEAGUE · WORLD 01</span>
-        <span>PIXELS → PREDICTION → HIDDEN PHYSICS → INTERVENTION</span>
+        <span>BLOCKET LEAGUE</span>
       </footer>
     </main>
   );

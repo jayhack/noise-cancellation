@@ -67,7 +67,7 @@
 
 .hero {
   width: min(1240px, calc(100% - 48px));
-  min-height: 670px;
+  min-height: 600px;
   margin: 0 auto;
   padding: 110px 0 80px;
   position: relative;
