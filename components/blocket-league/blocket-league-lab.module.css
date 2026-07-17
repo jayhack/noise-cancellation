@@ -147,6 +147,7 @@
 .scaleSection,
 .entropySection,
 .liveSection,
+.lensSection,
 .interpretabilitySection {
   width: min(1240px, calc(100% - 48px));
   margin: 0 auto;
@@ -1876,27 +1877,25 @@
 }
 
 .sectionHeading {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
-  align-items: end;
-  gap: 64px;
-  margin-bottom: 44px;
+  display: block;
+  margin-bottom: 52px;
 }
 
 .sectionHeading h2,
 .scaleIntro h2 {
   margin: 0;
-  font-size: clamp(36px, 4.7vw, 68px);
+  font-size: clamp(32px, 3.4vw, 46px);
   font-weight: 450;
-  line-height: 0.98;
-  letter-spacing: -0.055em;
+  line-height: 1.04;
+  letter-spacing: -0.045em;
 }
 
 .sectionHeading > p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 16px;
-  line-height: 1.65;
+  max-width: 940px;
+  margin: 22px 0 0;
+  color: #aeb9b6;
+  font-size: clamp(18px, 1.65vw, 22px);
+  line-height: 1.58;
 }
 
 .simulatorShell {
@@ -2241,6 +2240,731 @@
   padding-bottom: 120px;
 }
 
+.architectureDiagram,
+.lensDiagram {
+  border: 1px solid var(--line);
+  background: #090f13;
+  box-shadow: 0 26px 80px rgb(0 0 0 / 28%);
+}
+
+.architectureDiagram {
+  position: relative;
+  min-height: 420px;
+  padding: 36px 36px 78px;
+  overflow: hidden;
+}
+
+.architectureFlow {
+  min-height: 300px;
+  display: grid;
+  grid-template-columns: minmax(340px, 1.45fr) minmax(96px, 0.38fr) minmax(260px, 0.94fr) 34px minmax(160px, 0.58fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.architectureInput {
+  min-width: 0;
+  min-height: 300px;
+  position: relative;
+}
+
+.architectureLabel {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-mono);
+}
+
+.architectureLabel > span,
+.architectureNode > span,
+.architecturePrediction > span {
+  color: var(--mint);
+  font-size: 8px;
+  letter-spacing: 0.13em;
+}
+
+.architectureLabel strong {
+  color: #d2dbd7;
+  font-size: 25px;
+  font-weight: 400;
+}
+
+.architectureLabel small,
+.architectureNode small,
+.architecturePrediction small {
+  color: #657472;
+  font: 8px var(--font-mono);
+  line-height: 1.5;
+}
+
+.historyPerspective {
+  width: min(350px, 95%);
+  height: 150px;
+  position: absolute;
+  left: 2px;
+  bottom: 3px;
+  display: flex;
+  align-items: center;
+  transform: perspective(680px) rotateX(57deg) rotateZ(-13deg);
+  transform-origin: 55% 72%;
+}
+
+.historyPerspective .diagramFrame {
+  width: 75px;
+  flex: 0 0 75px;
+  box-shadow: -13px 14px 22px rgb(0 0 0 / 48%);
+}
+
+.historyPerspective .diagramFrame + .diagramFrame {
+  margin-left: -34px;
+}
+
+.historyPerspective .diagramFrame small {
+  top: calc(100% + 10px);
+  font-size: 8px;
+}
+
+.convergenceLines {
+  width: 126px;
+  height: 132px;
+  position: absolute;
+  right: -8px;
+  bottom: 40px;
+  opacity: 0.58;
+}
+
+.convergenceLines span {
+  height: 1px;
+  position: absolute;
+  right: 0;
+  transform-origin: 100% 50%;
+  background: linear-gradient(90deg, transparent, rgb(50 213 173 / 72%));
+}
+
+.convergenceLines span:nth-child(1) { width: 118px; top: 8px; transform: rotate(29deg); }
+.convergenceLines span:nth-child(2) { width: 109px; top: 24px; transform: rotate(22deg); }
+.convergenceLines span:nth-child(3) { width: 100px; top: 40px; transform: rotate(15deg); }
+.convergenceLines span:nth-child(4) { width: 92px; top: 56px; transform: rotate(7deg); }
+.convergenceLines span:nth-child(5) { width: 92px; top: 72px; transform: rotate(-2deg); }
+.convergenceLines span:nth-child(6) { width: 100px; top: 88px; transform: rotate(-10deg); }
+.convergenceLines span:nth-child(7) { width: 109px; top: 104px; transform: rotate(-18deg); }
+.convergenceLines span:nth-child(8) { width: 118px; top: 120px; transform: rotate(-25deg); }
+
+.architectureNode {
+  min-width: 0;
+  min-height: 210px;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 1px solid #2b3b3d;
+  background: rgb(11 21 24 / 78%);
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+.architectureNode > strong {
+  color: #cbd4d1;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.architectureEdge {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 11px;
+  color: #526163;
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.architectureEdge span {
+  color: #71807d;
+  font-size: 7px;
+  letter-spacing: 0.1em;
+  line-height: 1.45;
+}
+
+.architectureEdge svg {
+  width: 18px;
+}
+
+.projectionNode {
+  border-radius: 50%;
+  aspect-ratio: 1;
+  min-height: 0;
+  padding: 18px;
+  border-color: rgb(50 213 173 / 42%);
+  box-shadow: 0 0 44px rgb(50 213 173 / 7%);
+}
+
+.transformerNode {
+  min-height: 248px;
+  align-items: stretch;
+  border-color: rgb(50 213 173 / 44%);
+  background:
+    radial-gradient(circle at 50% 50%, rgb(50 213 173 / 9%), transparent 62%),
+    rgb(11 21 24 / 84%);
+}
+
+.transformerNode > strong {
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: -0.035em;
+}
+
+.transformerNode > em {
+  color: #657472;
+  font-size: 7px;
+  font-style: normal;
+  letter-spacing: 0.07em;
+}
+
+.architecturePrediction {
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-family: var(--font-mono);
+}
+
+.architectureStage,
+.lensStage {
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: #0b1317;
+}
+
+.architectureStage {
+  min-height: 284px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.architectureHistory {
+  background:
+    linear-gradient(135deg, rgb(50 213 173 / 5%), transparent 58%),
+    #0b1317;
+}
+
+.diagramStageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-family: var(--font-mono);
+}
+
+.diagramStageHeader > span {
+  color: var(--mint);
+  font-size: 8px;
+  letter-spacing: 0.13em;
+}
+
+.diagramStageHeader > strong {
+  color: #d2dbd7;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 450;
+  letter-spacing: -0.035em;
+}
+
+.diagramStageHeader > small {
+  color: #657472;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.historyRibbon {
+  min-height: 78px;
+  margin-top: auto;
+  padding: 0 2px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.historyRibbon .diagramFrame {
+  width: 46px;
+  flex: 0 0 46px;
+  box-shadow: -10px 0 18px rgb(0 0 0 / 36%);
+}
+
+.historyRibbon .diagramFrame + .diagramFrame {
+  margin-left: -8px;
+}
+
+.diagramFrame {
+  width: 100%;
+  aspect-ratio: 1;
+  position: relative;
+  overflow: visible;
+  border: 1px solid #354447;
+  background:
+    linear-gradient(90deg, transparent 49%, rgb(75 118 115 / 25%) 50%, transparent 51%),
+    #0c2022;
+}
+
+.diagramFrame::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 2px solid #596c6d;
+}
+
+.diagramFrame small {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: #6e7d7a;
+  font: 7px var(--font-mono);
+  white-space: nowrap;
+}
+
+.diagramGoal {
+  width: 3px;
+  height: 26%;
+  position: absolute;
+  top: 37%;
+  right: 1px;
+  z-index: 2;
+  background: var(--gold);
+}
+
+.diagramPlayer,
+.diagramPuck {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+
+.diagramPlayer {
+  width: 17%;
+  aspect-ratio: 1;
+  background: var(--mint);
+  box-shadow: inset 0 0 0 2px #163d38;
+}
+
+.diagramPuck {
+  width: 11%;
+  aspect-ratio: 1;
+  background: var(--ink);
+  box-shadow: inset 0 0 0 1px #697674;
+}
+
+.diagramFramePredicted {
+  width: 112px;
+  margin: auto auto 18px;
+  border-color: rgb(50 213 173 / 62%);
+  box-shadow: 0 0 32px rgb(50 213 173 / 8%);
+}
+
+.architectureArrow,
+.lensArrow {
+  width: 14px;
+  align-self: center;
+  justify-self: center;
+  color: #526163;
+}
+
+.patchGrid {
+  width: 96px;
+  aspect-ratio: 1;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+  transform: rotateX(55deg) rotateZ(45deg);
+}
+
+.patchGrid span,
+.patchGrid i {
+  border: 1px solid rgb(50 213 173 / 40%);
+  background: rgb(50 213 173 / 8%);
+}
+
+.patchGrid i {
+  display: block;
+}
+
+.architectureMeta,
+.activationVector,
+.centroidCoordinates,
+.directionWrite {
+  color: #74817f;
+  font: 8px var(--font-mono);
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+.transformerStage {
+  border-color: rgb(50 213 173 / 42%);
+  background:
+    radial-gradient(circle at 50% 42%, rgb(50 213 173 / 9%), transparent 58%),
+    #0b1518;
+}
+
+.factorizedBlock {
+  margin: auto 0 14px;
+  border: 1px solid #2a3c3e;
+}
+
+.factorizedBlock > div {
+  min-height: 35px;
+  padding: 7px 9px;
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #223235;
+  font-family: var(--font-mono);
+}
+
+.factorizedBlock > div:last-child {
+  border-bottom: 0;
+}
+
+.factorizedBlock span {
+  color: var(--mint);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.factorizedBlock strong {
+  color: #85918f;
+  font-size: 7px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.blockStack {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+
+.blockStack span,
+.blockStack i {
+  min-height: 20px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgb(50 213 173 / 30%);
+  color: #77918b;
+  font: 7px var(--font-mono);
+}
+
+.blockStack i {
+  font-style: normal;
+}
+
+.architectureOutput {
+  background: rgb(50 213 173 / 3%);
+}
+
+.feedbackRail {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 22px;
+  height: 36px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 18px;
+  border-top: 1px solid rgb(50 213 173 / 30%);
+  color: #667573;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 0.09em;
+}
+
+.feedbackRail::before {
+  content: "";
+  height: 1px;
+  position: absolute;
+  left: 92px;
+  right: 92px;
+  top: -1px;
+  background: linear-gradient(90deg, transparent, var(--mint), transparent);
+}
+
+.feedbackRail strong {
+  color: var(--mint);
+  font-size: 8px;
+  font-weight: 400;
+  text-align: center;
+}
+
+.lensSection {
+  padding-bottom: 120px;
+}
+
+.sectionHeading a {
+  color: #b7c4c0;
+  text-decoration-color: rgb(50 213 173 / 45%);
+  text-underline-offset: 4px;
+}
+
+.lensFlow {
+  padding: 24px;
+  display: grid;
+  grid-template-columns:
+    minmax(145px, 0.7fr) 24px
+    minmax(165px, 0.78fr) minmax(210px, 1.05fr)
+    minmax(165px, 0.78fr) 24px
+    minmax(175px, 0.85fr);
+  align-items: stretch;
+}
+
+.lensStage {
+  min-height: 266px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.contextFan {
+  width: 116px;
+  height: 108px;
+  position: relative;
+  margin: auto;
+}
+
+.contextFan .diagramFrame {
+  width: 76px;
+  position: absolute;
+  box-shadow: -10px 12px 24px rgb(0 0 0 / 42%);
+}
+
+.contextFan .diagramFrame:nth-child(1) { left: 0; top: 24px; }
+.contextFan .diagramFrame:nth-child(2) { left: 18px; top: 12px; }
+.contextFan .diagramFrame:nth-child(3) { left: 36px; top: 0; }
+
+.lensActivation {
+  border-color: rgb(50 213 173 / 40%);
+}
+
+.activationGrid {
+  width: 112px;
+  aspect-ratio: 1;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.activationGrid span {
+  border: 1px solid #2b3a3d;
+  background: #0e191d;
+}
+
+.activationGrid .activationCellActive {
+  border-color: var(--mint);
+  background: rgb(50 213 173 / 38%);
+  box-shadow: 0 0 18px rgb(50 213 173 / 30%);
+}
+
+.jacobianBridge {
+  min-width: 0;
+  padding: 42px 16px 34px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  align-items: center;
+  font-family: var(--font-mono);
+}
+
+.forwardRail,
+.backwardRail {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #6e7b79;
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.forwardRail {
+  border-bottom: 1px solid rgb(50 213 173 / 40%);
+  color: var(--mint);
+}
+
+.backwardRail {
+  border-top: 1px solid rgb(238 181 62 / 45%);
+  color: var(--gold);
+}
+
+.forwardRail svg,
+.backwardRail svg {
+  width: 14px;
+}
+
+.backwardRail svg {
+  transform: rotate(180deg);
+}
+
+.bridgeBlocks {
+  padding: 18px 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.bridgeBlocks span {
+  min-height: 54px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #2b393c;
+  background: #0d171b;
+  color: #83908d;
+  font-size: 7px;
+  text-align: center;
+}
+
+.lensReadout {
+  background: rgb(238 181 62 / 3%);
+}
+
+.centroidBoard {
+  width: 112px;
+  aspect-ratio: 1;
+  position: relative;
+  margin: auto;
+  border: 1px solid #354447;
+  background:
+    linear-gradient(90deg, transparent 49%, rgb(75 118 115 / 22%) 50%, transparent 51%),
+    #0c2022;
+}
+
+.centroidDisc {
+  width: 24px;
+  aspect-ratio: 1;
+  position: absolute;
+  left: 61%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--mint);
+  box-shadow: inset 0 0 0 6px #163d38;
+}
+
+.centroidCrossX,
+.centroidCrossY {
+  position: absolute;
+  left: 61%;
+  top: 42%;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  background: var(--gold);
+}
+
+.centroidCrossX { width: 38px; height: 1px; }
+.centroidCrossY { width: 1px; height: 38px; }
+
+.lensDirections {
+  border-color: rgb(50 213 173 / 48%);
+  background:
+    radial-gradient(circle at 50% 58%, rgb(50 213 173 / 10%), transparent 56%),
+    #0b1518;
+}
+
+.directionAxes {
+  margin: auto 0;
+  display: grid;
+  gap: 8px;
+}
+
+.directionAxes > div {
+  min-height: 42px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgb(50 213 173 / 30%);
+  color: var(--mint);
+  font-family: var(--font-mono);
+}
+
+.directionAxes span {
+  font-size: 13px;
+}
+
+.directionAxes i {
+  font-size: 24px;
+  font-style: normal;
+}
+
+.lensEquation {
+  min-height: 92px;
+  padding: 18px 24px;
+  display: grid;
+  grid-template-columns: 130px minmax(320px, 1fr) minmax(220px, 0.8fr);
+  align-items: center;
+  gap: 24px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono);
+}
+
+.lensEquation > span,
+.lensComparison span {
+  color: var(--mint);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+
+.lensEquation strong {
+  color: #c1ccc8;
+  font-size: 12px;
+  font-weight: 400;
+  text-align: center;
+}
+
+.lensEquation small,
+.lensComparison small {
+  color: #6c7977;
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+.lensComparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.lensComparison > div {
+  min-height: 108px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+}
+
+.lensComparison > div:first-child {
+  border-right: 1px solid var(--line);
+}
+
+.lensComparison strong {
+  color: #aab6b2;
+  font-size: 10px;
+  font-weight: 400;
+}
+
 .pipeline {
   position: relative;
   display: grid;
@@ -2420,6 +3144,82 @@
 }
 
 @media (max-width: 980px) {
+  .architectureDiagram {
+    padding: 24px;
+    padding-bottom: 24px;
+  }
+
+  .architectureFlow {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .architectureInput {
+    width: min(430px, 100%);
+    justify-self: center;
+  }
+
+  .architectureInput::after {
+    content: none;
+  }
+
+  .convergenceLines {
+    display: none;
+  }
+
+  .architectureEdge {
+    justify-self: center;
+  }
+
+  .architectureEdge svg {
+    transform: rotate(90deg);
+  }
+
+  .transformerNode {
+    width: min(420px, 100%);
+    justify-self: center;
+  }
+
+  .architecturePrediction {
+    justify-self: center;
+  }
+
+  .architectureStage {
+    min-height: 240px;
+  }
+
+  .architectureArrow,
+  .lensArrow {
+    transform: rotate(90deg);
+  }
+
+  .feedbackRail {
+    min-height: 44px;
+    height: auto;
+    position: static;
+    grid-column: 1;
+    padding-top: 10px;
+  }
+
+  .lensFlow {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .lensStage {
+    min-height: 230px;
+  }
+
+  .jacobianBridge {
+    min-height: 210px;
+  }
+
+  .lensEquation {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    text-align: center;
+  }
+
   .simulatorShell {
     grid-template-columns: minmax(0, 1fr) 280px;
   }
@@ -2481,6 +3281,7 @@
   .scaleSection,
   .entropySection,
   .liveSection,
+  .lensSection,
   .interpretabilitySection,
   .footer {
     width: min(100% - 30px, 1240px);
@@ -2712,6 +3513,15 @@
     display: none;
   }
 
+  .lensComparison {
+    grid-template-columns: 1fr;
+  }
+
+  .lensComparison > div:first-child {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
   .ladder li {
     grid-template-columns: 38px 1fr;
     gap: 12px;
@@ -2729,6 +3539,26 @@
 }
 
 @media (max-width: 560px) {
+  .architectureDiagram,
+  .lensFlow {
+    padding: 14px;
+  }
+
+  .historyRibbon .diagramFrame {
+    width: 39px;
+    flex-basis: 39px;
+  }
+
+  .historyRibbon .diagramFrame + .diagramFrame {
+    margin-left: -7px;
+  }
+
+  .feedbackRail {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    text-align: center;
+  }
+
   .interventionBoards {
     grid-template-columns: 1fr;
   }

@@ -3,13 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
-  Activity,
   ArrowRight,
   CircleDot,
-  Cpu,
   Eye,
   EyeOff,
-  Gauge,
   Pause,
   Play,
   RotateCcw,
@@ -31,6 +28,44 @@ import { LiveWorldModel } from "./live-world-model";
 import { PixelInterpretabilityViewer } from "./pixel-interpretability-viewer";
 
 type TrailPoint = { player: Vec2; puck: Vec2 };
+
+const MODEL_HISTORY = [
+  { label: "t−7", player: [24, 68], puck: [72, 28] },
+  { label: "t−6", player: [28, 63], puck: [69, 31] },
+  { label: "t−5", player: [33, 58], puck: [65, 35] },
+  { label: "t−4", player: [38, 53], puck: [61, 39] },
+  { label: "t−3", player: [43, 48], puck: [57, 43] },
+  { label: "t−2", player: [48, 43], puck: [53, 47] },
+  { label: "t−1", player: [53, 38], puck: [49, 51] },
+  { label: "t", player: [58, 33], puck: [45, 55] },
+] as const;
+
+function DiagramFrame({
+  label,
+  player,
+  puck,
+  predicted = false,
+}: {
+  label: string;
+  player: readonly [number, number];
+  puck: readonly [number, number];
+  predicted?: boolean;
+}) {
+  return (
+    <div className={`${styles.diagramFrame} ${predicted ? styles.diagramFramePredicted : ""}`}>
+      <span className={styles.diagramGoal} />
+      <span
+        className={styles.diagramPlayer}
+        style={{ left: `${player[0]}%`, top: `${player[1]}%` }}
+      />
+      <span
+        className={styles.diagramPuck}
+        style={{ left: `${puck[0]}%`, top: `${puck[1]}%` }}
+      />
+      <small>{label}</small>
+    </div>
+  );
+}
 
 function drawArrow(
   context: CanvasRenderingContext2D,
@@ -340,39 +375,181 @@ export function BlocketLeagueLab() {
       <section className={styles.modelSection} aria-labelledby="model-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionIndex}>02 / THE MODEL</p>
-            <h2 id="model-title">Pixels in. Pixels out.</h2>
+            <p className={styles.sectionIndex}>02 / THE ARCHITECTURE</p>
+            <h2 id="model-title">Previous frames become the next.</h2>
           </div>
           <p>
-            A 3.67-million-parameter causal transformer sees eight exact rendered frames and predicts
-            the ninth. There is no encoder, decoder, simulator state, or control token in the path.
+            The transformer is trained like a visual next-token predictor: previous rendered frames
+            go in, and it predicts the pixels of the next. There are no actions or coordinates in the
+            input. During a rollout, each predicted image becomes part of the history, so position,
+            motion, collisions, and resets must survive through the model&apos;s own pixels.
           </p>
         </div>
 
-        <div className={styles.pipeline}>
-          <div className={styles.pipelineNode}>
-            <span><ScanLine aria-hidden="true" /></span>
-            <p>OBSERVE</p>
-            <strong>8 pixel frames</strong>
-            <small>9 exact colors · 64 × 64</small>
+        <div
+          className={styles.architectureDiagram}
+          role="img"
+          aria-label="A perspective stack of previous pixel frames is patch embedded into one six-block causal transformer, which predicts the next categorical image. The prediction is then appended to the history for the next step."
+        >
+          <div className={styles.architectureFlow}>
+            <div className={styles.architectureInput}>
+              <div className={styles.architectureLabel}>
+                <span>PREVIOUS FRAMES</span>
+                <strong>… x<sub>t−2</sub>, x<sub>t−1</sub>, x<sub>t</sub></strong>
+                <small>64 × 64 categorical images · no actions</small>
+              </div>
+              <div className={styles.historyPerspective} aria-hidden="true">
+                {MODEL_HISTORY.map((frame, index) => (
+                  <DiagramFrame
+                    key={frame.label}
+                    {...frame}
+                    label={["earlier", "", "", "…", "", "t−2", "t−1", "t"][index]}
+                  />
+                ))}
+              </div>
+              <div className={styles.convergenceLines} aria-hidden="true">
+                {Array.from({ length: 8 }, (_, index) => <span key={index} />)}
+              </div>
+            </div>
+
+            <div className={styles.architectureEdge}>
+              <span>4 × 4 PATCH EMBEDDING</span>
+              <ArrowRight aria-hidden="true" />
+            </div>
+
+            <div className={`${styles.architectureNode} ${styles.transformerNode}`}>
+              <span>PIXEL TRANSFORMER</span>
+              <strong>6 causal blocks</strong>
+              <small>space attention → time attention → MLP</small>
+              <div className={styles.blockStack} aria-hidden="true">
+                {Array.from({ length: 6 }, (_, index) => <i key={index}>B{index + 1}</i>)}
+              </div>
+              <em>3.67M parameters · no action input</em>
+            </div>
+
+            <ArrowRight className={styles.architectureArrow} aria-hidden="true" />
+
+            <div className={styles.architecturePrediction}>
+              <span>NEXT FRAME</span>
+              <DiagramFrame
+                label="x̂t+1"
+                player={[63, 29]}
+                puck={[41, 59]}
+                predicted
+              />
+              <small>64 × 64 × 9 logits → argmax</small>
+            </div>
           </div>
-          <ArrowRight className={styles.pipelineArrow} aria-hidden="true" />
-          <div className={`${styles.pipelineNode} ${styles.pipelineCore}`}>
-            <span><Cpu aria-hidden="true" /></span>
-            <p>PREDICT</p>
-            <strong>Pixel transformer</strong>
-            <small>6 causal blocks · no actions</small>
+
+          <div className={styles.feedbackRail}>
+            <span>ROLL FORWARD</span>
+            <strong>the predicted image becomes a previous frame</strong>
+            <span>REPEAT</span>
           </div>
-          <ArrowRight className={styles.pipelineArrow} aria-hidden="true" />
-          <div className={styles.pipelineNode}>
-            <span><Activity aria-hidden="true" /></span>
-            <p>UNROLL</p>
-            <strong>1 future frame</strong>
-            <small>feed pixels back · repeat</small>
+        </div>
+      </section>
+
+      <section className={styles.lensSection} aria-labelledby="lens-title">
+        <div className={styles.sectionHeading}>
+          <div>
+            <p className={styles.sectionIndex}>03 / TAKE THE LENS</p>
+            <h2 id="lens-title">Average what this activation can cause downstream.</h2>
           </div>
-          <div className={styles.probeRail}>
-            <div><ScanLine aria-hidden="true" /> linear probes</div>
-            <div><Gauge aria-hidden="true" /> causal edits</div>
+          <p>
+            The <a href="https://transformer-circuits.pub/2026/workspace/index.html#the-jacobian-lens" target="_blank" rel="noreferrer">J-space paper&apos;s Jacobian lens</a> averages how an intermediate activation changes future verbal outputs. Our physics analogue replaces words with the green disc&apos;s rendered x/y position.
+          </p>
+        </div>
+
+        <div
+          className={styles.lensDiagram}
+          role="img"
+          aria-label="Across 512 rendered contexts, select the block five activation at the green disc's spatial token, run the frozen downstream model to the next rendered frame, backpropagate the green centroid's x and y coordinates, and average those gradients into global x and y steering directions."
+        >
+          <div className={styles.lensFlow}>
+            <div className={`${styles.lensStage} ${styles.lensContexts}`}>
+              <div className={styles.diagramStageHeader}>
+                <span>01 / SAMPLE</span>
+                <strong>512 worlds</strong>
+                <small>separate fit contexts</small>
+              </div>
+              <div className={styles.contextFan} aria-hidden="true">
+                {MODEL_HISTORY.slice(2, 5).map((frame, index) => (
+                  <DiagramFrame key={frame.label} {...frame} label={`world ${index + 1}`} />
+                ))}
+              </div>
+            </div>
+
+            <ArrowRight className={styles.lensArrow} aria-hidden="true" />
+
+            <div className={`${styles.lensStage} ${styles.lensActivation}`}>
+              <div className={styles.diagramStageHeader}>
+                <span>02 / LOCATE</span>
+                <strong>h<sub>ℓ,p</sub> at block 5</strong>
+                <small>p = green spatial token</small>
+              </div>
+              <div className={styles.activationGrid} aria-hidden="true">
+                {Array.from({ length: 25 }, (_, index) => (
+                  <span key={index} className={index === 17 ? styles.activationCellActive : undefined} />
+                ))}
+              </div>
+              <div className={styles.activationVector}>192D activation</div>
+            </div>
+
+            <div className={styles.jacobianBridge}>
+              <div className={styles.forwardRail}><span>FROZEN FORWARD</span><ArrowRight aria-hidden="true" /></div>
+              <div className={styles.bridgeBlocks}>
+                <span>B6</span><span>NORM</span><span>PIXEL HEAD</span>
+              </div>
+              <div className={styles.backwardRail}><ArrowRight aria-hidden="true" /><span>BACKPROP ∂ŷ / ∂h</span></div>
+            </div>
+
+            <div className={`${styles.lensStage} ${styles.lensReadout}`}>
+              <div className={styles.diagramStageHeader}>
+                <span>03 / MEASURE</span>
+                <strong>Next-frame centroid</strong>
+                <small>soft readout from green logits</small>
+              </div>
+              <div className={styles.centroidBoard} aria-hidden="true">
+                <span className={styles.centroidDisc} />
+                <span className={styles.centroidCrossX} />
+                <span className={styles.centroidCrossY} />
+              </div>
+              <div className={styles.centroidCoordinates}>ŷ = (x̂, ŷ)</div>
+            </div>
+
+            <ArrowRight className={styles.lensArrow} aria-hidden="true" />
+
+            <div className={`${styles.lensStage} ${styles.lensDirections}`}>
+              <div className={styles.diagramStageHeader}>
+                <span>04 / AVERAGE</span>
+                <strong>Global directions</strong>
+                <small>reusable across unseen rollouts</small>
+              </div>
+              <div className={styles.directionAxes} aria-hidden="true">
+                <div><span>v<sub>x</sub></span><i>→</i></div>
+                <div><span>v<sub>y</sub></span><i>↓</i></div>
+              </div>
+              <div className={styles.directionWrite}>h ← h + αv</div>
+            </div>
+          </div>
+
+          <div className={styles.lensEquation}>
+            <span>PHYSICS J-LENS</span>
+            <strong>v<sub>x</sub> = normalize [ 1/K · Σ<sub>i</sub> ∂x̂<sub>i,t+1</sub> / ∂h<sub>i,ℓ,p</sub> ]</strong>
+            <small>Repeat for y. Average across contexts to remove rollout-specific accidents and retain a reusable downstream effect.</small>
+          </div>
+
+          <div className={styles.lensComparison}>
+            <div>
+              <span>ANTHROPIC J-LENS</span>
+              <strong>activation → future final residuals → vocabulary logits</strong>
+              <small>Average across prompts, source positions, and future positions.</small>
+            </div>
+            <div>
+              <span>OUR MOTION LENS</span>
+              <strong>player token → next-frame pixels → rendered centroid</strong>
+              <small>Average across worlds; then write the resulting x/y direction back into the same token.</small>
+            </div>
           </div>
         </div>
       </section>
@@ -380,7 +557,7 @@ export function BlocketLeagueLab() {
       <section className={styles.trajectorySection} aria-labelledby="prediction-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionIndex}>03 / THE PREDICTION</p>
+            <p className={styles.sectionIndex}>04 / THE PREDICTION</p>
             <h2 id="prediction-title">It keeps both circles in motion.</h2>
           </div>
           <p>
@@ -398,7 +575,7 @@ export function BlocketLeagueLab() {
       <section className={styles.interpretabilitySection} aria-labelledby="interpretability-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionIndex}>04 / OPEN THE MODEL</p>
+            <p className={styles.sectionIndex}>05 / OPEN THE MODEL</p>
             <h2 id="interpretability-title">The hidden velocity becomes writable.</h2>
           </div>
           <p>
@@ -413,7 +590,7 @@ export function BlocketLeagueLab() {
       <section className={styles.liveSection} aria-labelledby="live-title">
         <div className={styles.sectionHeading}>
           <div>
-            <p className={styles.sectionIndex}>05 / PLAY THE INTERVENTION</p>
+            <p className={styles.sectionIndex}>06 / PLAY THE INTERVENTION</p>
             <h2 id="live-title">The controls are brain surgery.</h2>
           </div>
           <p>
@@ -427,7 +604,7 @@ export function BlocketLeagueLab() {
 
       <section className={styles.scaleSection} aria-labelledby="scale-title">
         <div className={styles.scaleIntro}>
-          <p className={styles.sectionIndex}>06 / NEXT WORLDS</p>
+          <p className={styles.sectionIndex}>07 / NEXT WORLDS</p>
           <h2 id="scale-title">Add one difficulty at a time.</h2>
         </div>
         <ol className={styles.ladder}>
