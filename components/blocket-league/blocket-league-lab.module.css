@@ -1891,16 +1891,17 @@
 }
 
 .sectionHeading > p {
-  max-width: 940px;
+  max-width: 1040px;
   margin: 22px 0 0;
-  color: #aeb9b6;
-  font-size: clamp(18px, 1.65vw, 22px);
-  line-height: 1.58;
+  color: #bec8c5;
+  font-size: clamp(21px, 2vw, 26px);
+  line-height: 1.52;
 }
 
 .simulatorShell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 310px;
+  width: min(760px, 100%);
+  margin: 0 auto;
+  display: block;
   border: 1px solid var(--line);
   background: var(--surface);
   box-shadow: 0 26px 80px rgb(0 0 0 / 28%);
@@ -1908,18 +1909,56 @@
 
 .canvasColumn {
   min-width: 0;
-  padding: 18px;
+  padding: 14px;
 }
 
 .canvasHeader {
-  height: 42px;
+  min-height: 48px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.simulatorActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.simulatorActions button {
+  min-height: 34px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #334346;
+  border-radius: 4px;
+  background: transparent;
+  color: #bdc6c3;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 450;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.simulatorActions button:hover {
+  border-color: #647578;
+  color: var(--ink);
+}
+
+.simulatorActions svg {
+  width: 15px;
+}
+
+.score {
+  color: var(--muted);
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.14em;
-  color: var(--muted);
 }
 
 .liveLabel {
@@ -1943,7 +1982,7 @@
 }
 
 .canvas {
-  width: min(100%, 780px);
+  width: min(100%, 680px);
   aspect-ratio: 1;
   display: block;
   margin: 0 auto;

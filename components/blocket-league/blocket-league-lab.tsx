@@ -5,12 +5,9 @@ import Image from "next/image";
 import {
   ArrowRight,
   CircleDot,
-  Eye,
-  EyeOff,
   Pause,
   Play,
   RotateCcw,
-  ScanLine,
 } from "lucide-react";
 
 import {
@@ -26,8 +23,6 @@ import {
 import styles from "./blocket-league-lab.module.css";
 import { LiveWorldModel } from "./live-world-model";
 import { PixelInterpretabilityViewer } from "./pixel-interpretability-viewer";
-
-type TrailPoint = { player: Vec2; puck: Vec2 };
 
 const MODEL_HISTORY = [
   { label: "t−7", player: [24, 68], puck: [72, 28] },
@@ -67,32 +62,6 @@ function DiagramFrame({
   );
 }
 
-function drawArrow(
-  context: CanvasRenderingContext2D,
-  origin: Vec2,
-  velocity: Vec2,
-  color: string,
-) {
-  const scale = 0.13;
-  const end = { x: origin.x + velocity.x * scale, y: origin.y + velocity.y * scale };
-  const length = Math.hypot(end.x - origin.x, end.y - origin.y);
-  if (length < 0.008) return;
-  const angle = Math.atan2(end.y - origin.y, end.x - origin.x);
-  context.strokeStyle = color;
-  context.fillStyle = color;
-  context.lineWidth = 0.008;
-  context.beginPath();
-  context.moveTo(origin.x, origin.y);
-  context.lineTo(end.x, end.y);
-  context.stroke();
-  context.beginPath();
-  context.moveTo(end.x, end.y);
-  context.lineTo(end.x - Math.cos(angle - 0.52) * 0.026, end.y - Math.sin(angle - 0.52) * 0.026);
-  context.lineTo(end.x - Math.cos(angle + 0.52) * 0.026, end.y - Math.sin(angle + 0.52) * 0.026);
-  context.closePath();
-  context.fill();
-}
-
 function drawDisc(
   context: CanvasRenderingContext2D,
   position: Vec2,
@@ -117,8 +86,6 @@ function drawDisc(
 function drawWorld(
   canvas: HTMLCanvasElement,
   state: WorldState,
-  showVectors: boolean,
-  trail: TrailPoint[],
 ) {
   const bounds = canvas.getBoundingClientRect();
   if (bounds.width <= 0) return;
@@ -181,31 +148,8 @@ function drawWorld(
   context.lineTo(1 - wall, WORLD.goalHigh);
   context.stroke();
 
-  if (showVectors && trail.length > 1) {
-    context.lineWidth = 0.007;
-    context.lineCap = "round";
-    context.strokeStyle = "rgba(50, 213, 173, 0.22)";
-    context.beginPath();
-    trail.forEach((point, index) => {
-      if (index === 0) context.moveTo(point.player.x, point.player.y);
-      else context.lineTo(point.player.x, point.player.y);
-    });
-    context.stroke();
-    context.strokeStyle = "rgba(239, 242, 233, 0.18)";
-    context.beginPath();
-    trail.forEach((point, index) => {
-      if (index === 0) context.moveTo(point.puck.x, point.puck.y);
-      else context.lineTo(point.puck.x, point.puck.y);
-    });
-    context.stroke();
-  }
-
   drawDisc(context, state.playerPosition, WORLD.playerRadius, "#32d5ad", "#0b3934");
   drawDisc(context, state.puckPosition, WORLD.puckRadius, "#eff2e9", "#96a199");
-  if (showVectors) {
-    drawArrow(context, state.playerPosition, state.playerVelocity, "rgba(50, 213, 173, 0.88)");
-    drawArrow(context, state.puckPosition, state.puckVelocity, "rgba(239, 242, 233, 0.78)");
-  }
 
   if (state.resetTimer > 0) {
     context.fillStyle = "rgba(7, 11, 16, 0.72)";
@@ -219,19 +163,12 @@ function drawWorld(
   context.restore();
 }
 
-function format(value: number) {
-  const fixed = Math.abs(value) < 0.0005 ? 0 : value;
-  return fixed.toFixed(2);
-}
-
 export function BlocketLeagueLab() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [initialWorld] = useState(() => createPassiveWorld(17));
   const worldRef = useRef<WorldState>(initialWorld);
-  const trailRef = useRef<TrailPoint[]>([]);
   const [snapshot, setSnapshot] = useState(() => snapshotWorld(initialWorld));
   const [paused, setPaused] = useState(false);
-  const [showVectors, setShowVectors] = useState(true);
 
   useEffect(() => {
     let animationFrame = 0;
@@ -246,26 +183,20 @@ export function BlocketLeagueLab() {
       let advanced = false;
       while (!paused && accumulator >= stepDuration) {
         stepWorld(world, 0, true);
-        trailRef.current.push({
-          player: { ...world.playerPosition },
-          puck: { ...world.puckPosition },
-        });
-        if (trailRef.current.length > 30) trailRef.current.shift();
         accumulator -= stepDuration;
         advanced = true;
       }
       if (advanced) setSnapshot(snapshotWorld(world));
-      if (canvasRef.current) drawWorld(canvasRef.current, world, showVectors, trailRef.current);
+      if (canvasRef.current) drawWorld(canvasRef.current, world);
       animationFrame = requestAnimationFrame(animate);
     };
     animationFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrame);
-  }, [paused, showVectors]);
+  }, [paused]);
 
   const reset = () => {
     const world = worldRef.current;
     resetPassiveRound(world, true);
-    trailRef.current = [];
     setSnapshot(snapshotWorld(world));
   };
 
@@ -301,6 +232,15 @@ export function BlocketLeagueLab() {
         <div className={styles.simulatorShell}>
           <div className={styles.canvasColumn}>
             <div className={styles.canvasHeader}>
+              <div className={styles.simulatorActions}>
+                <button type="button" onClick={() => setPaused((value) => !value)}>
+                  {paused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
+                  {paused ? "Resume" : "Pause"}
+                </button>
+                <button type="button" onClick={reset}>
+                  <RotateCcw aria-hidden="true" /> Reset
+                </button>
+              </div>
               <div className={styles.score}>GOALS <strong>{snapshot.score.toString().padStart(2, "0")}</strong></div>
             </div>
             <canvas
@@ -309,56 +249,7 @@ export function BlocketLeagueLab() {
               role="img"
               aria-label="A playable square arena with a teal player disc, a white puck, and a gold goal on the right."
             />
-            <div className={styles.timeline} aria-hidden="true">
-              {Array.from({ length: 24 }, (_, index) => <span key={index} className={index > 18 ? styles.timelineFuture : undefined} />)}
-            </div>
           </div>
-
-          <aside className={styles.controlColumn} aria-label="Passive simulator state">
-            <div className={styles.controlTop}>
-              <div>
-                <span className={styles.controlLabel}>TRAINING MODE</span>
-                <strong>OBSERVATION ONLY</strong>
-              </div>
-            </div>
-
-            <div className={styles.transport}>
-              <button type="button" onClick={() => setPaused((value) => !value)}>
-                {paused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
-                {paused ? "Resume" : "Pause"}
-              </button>
-              <button type="button" onClick={reset}>
-                <RotateCcw aria-hidden="true" /> Reset
-              </button>
-            </div>
-
-            <button
-              type="button"
-              className={`${styles.xrayButton} ${showVectors ? styles.xrayActive : ""}`}
-              onClick={() => setShowVectors((value) => !value)}
-              aria-pressed={showVectors}
-            >
-              {showVectors ? <Eye aria-hidden="true" /> : <EyeOff aria-hidden="true" />}
-              <span><strong>X-RAY STATE</strong><small>velocity vectors + trails</small></span>
-              <span className={styles.switchTrack}><span /></span>
-            </button>
-
-            <div className={styles.readout}>
-              <div className={styles.readoutHeading}>
-                <ScanLine aria-hidden="true" /> PRIVILEGED STATE
-              </div>
-              <dl>
-                <div><dt>player p</dt><dd>{format(snapshot.playerPosition.x)}, {format(snapshot.playerPosition.y)}</dd></div>
-                <div><dt>player v</dt><dd>{format(snapshot.playerVelocity.x)}, {format(snapshot.playerVelocity.y)}</dd></div>
-                <div><dt>puck p</dt><dd>{format(snapshot.puckPosition.x)}, {format(snapshot.puckPosition.y)}</dd></div>
-                <div><dt>puck v</dt><dd>{format(snapshot.puckVelocity.x)}, {format(snapshot.puckVelocity.y)}</dd></div>
-              </dl>
-              <div className={styles.eventLine}>
-                <span className={styles.eventPulse} />
-                {snapshot.lastEvent.toUpperCase()} · NO INPUT
-              </div>
-            </div>
-          </aside>
         </div>
       </section>
 
@@ -458,14 +349,15 @@ export function BlocketLeagueLab() {
       <section className={styles.lensSection} aria-labelledby="lens-title">
         <div className={styles.sectionHeading}>
           <div>
-            <h2 id="lens-title">Hidden directions correspond to downstream physical effects.</h2>
+            <h2 id="lens-title">Hidden-state activation directions predict downstream physics.</h2>
           </div>
           <p>
-            Linear probes recover the green circle&apos;s position at 0.99 R² and its velocity at 0.90 R²
-            on unseen clips. To find directions that affect output—not merely correlate with it—we
-            adapt the <a href="https://transformer-circuits.pub/2026/workspace/index.html#the-jacobian-lens" target="_blank" rel="noreferrer">J-space paper&apos;s Jacobian lens</a> and average how hidden activations change
-            the next frame. Collision outcomes appear in the generated video, but we have not yet
-            isolated a single collision direction.
+            These directions are vectors in the transformer&apos;s 192-dimensional hidden state—not
+            directions on the game board. Linear probes recover position at 0.99 R² and velocity at
+            0.90 R² on unseen clips. We then adapt the <a href="https://transformer-circuits.pub/2026/workspace/index.html#the-jacobian-lens" target="_blank" rel="noreferrer">J-space paper&apos;s Jacobian lens</a> to extract
+            reusable activation-space vectors by averaging how each hidden activation changes the next
+            generated frame. Collision outcomes appear in the video, but we have not yet isolated a
+            single collision vector.
           </p>
         </div>
 
