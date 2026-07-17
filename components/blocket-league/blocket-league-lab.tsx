@@ -269,48 +269,59 @@ export function BlocketLeagueLab() {
         <div
           className={styles.architectureDiagram}
           role="img"
-          aria-label="A perspective stack of previous pixel frames is patch embedded into one six-block causal transformer, which predicts the next categorical image. The prediction is then appended to the history for the next step."
+          aria-label="Previous pixel frames are patch embedded and connected into six causal transformer blocks. A linear pixel head then predicts the next categorical image, which can be appended to the history."
         >
           <div className={styles.architectureFlow}>
             <div className={styles.architectureInput}>
               <div className={styles.architectureLabel}>
-                <span>PREVIOUS FRAMES</span>
-                <strong>… x<sub>t−2</sub>, x<sub>t−1</sub>, x<sub>t</sub></strong>
-                <small>64 × 64 categorical images · no actions</small>
+                <span>OBSERVED PIXEL FRAMES</span>
+                <strong>x<sub>≤t</sub> ∈ &#123;1 … 9&#125;<sup>64×64</sup></strong>
+                <small>previous images only · no action channel</small>
               </div>
-              <div className={styles.historyPerspective} aria-hidden="true">
-                {MODEL_HISTORY.map((frame, index) => (
+              <div className={styles.historyAcademic} aria-hidden="true">
+                {MODEL_HISTORY.slice(3).map((frame, index) => (
                   <DiagramFrame
                     key={frame.label}
                     {...frame}
-                    label={["earlier", "", "", "…", "", "t−2", "t−1", "t"][index]}
+                    label={["t−4", "t−3", "t−2", "t−1", "t"][index]}
                   />
                 ))}
               </div>
-              <div className={styles.convergenceLines} aria-hidden="true">
-                {Array.from({ length: 8 }, (_, index) => <span key={index} />)}
-              </div>
             </div>
 
-            <div className={styles.architectureEdge}>
-              <span>4 × 4 PATCH EMBEDDING</span>
-              <ArrowRight aria-hidden="true" />
+            <div className={styles.academicConnector} aria-hidden="true">
+              <span>4 × 4 patches<br />linear embedding</span>
+              <svg viewBox="0 0 130 120">
+                <path d="M2 12 H24 L82 60" />
+                <path d="M2 42 H34 L82 60" />
+                <path d="M2 78 H34 L82 60" />
+                <path d="M2 108 H24 L82 60" />
+                <path d="M82 60 H119" />
+                <path className={styles.connectorArrowhead} d="M119 55 L128 60 L119 65 Z" />
+              </svg>
             </div>
 
             <div className={`${styles.architectureNode} ${styles.transformerNode}`}>
-              <span>PIXEL TRANSFORMER</span>
-              <strong>6 causal blocks</strong>
-              <small>space attention → time attention → MLP</small>
-              <div className={styles.blockStack} aria-hidden="true">
-                {Array.from({ length: 6 }, (_, index) => <i key={index}>B{index + 1}</i>)}
+              <span>CAUSAL VIDEO TRANSFORMER</span>
+              <small>T × 16 × 16 tokens · d = 192</small>
+              <div className={styles.academicBlockStack} aria-hidden="true">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <i key={index}><b>L{index + 1}</b><em>S<br />T<br />MLP</em></i>
+                ))}
               </div>
-              <em>3.67M parameters · no action input</em>
+              <strong>six factorized causal blocks</strong>
             </div>
 
-            <ArrowRight className={styles.architectureArrow} aria-hidden="true" />
+            <div className={`${styles.academicConnector} ${styles.outputConnector}`} aria-hidden="true">
+              <span>pixel head<br />9-way logits</span>
+              <svg viewBox="0 0 90 40">
+                <path d="M2 20 H77" />
+                <path className={styles.connectorArrowhead} d="M77 15 L88 20 L77 25 Z" />
+              </svg>
+            </div>
 
             <div className={styles.architecturePrediction}>
-              <span>NEXT FRAME</span>
+              <span>PREDICTED FRAME</span>
               <DiagramFrame
                 label="x̂t+1"
                 player={[63, 29]}
@@ -322,9 +333,9 @@ export function BlocketLeagueLab() {
           </div>
 
           <div className={styles.feedbackRail}>
-            <span>ROLL FORWARD</span>
-            <strong>the predicted image becomes a previous frame</strong>
-            <span>REPEAT</span>
+            <span>AUTOREGRESSIVE ROLLOUT</span>
+            <strong>x̂<sub>t+1</sub> is appended to the observed history</strong>
+            <span>t ← t + 1</span>
           </div>
         </div>
       </section>

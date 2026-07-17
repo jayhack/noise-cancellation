@@ -2291,12 +2291,13 @@
   min-height: 420px;
   padding: 36px 36px 78px;
   overflow: hidden;
+  box-shadow: none;
 }
 
 .architectureFlow {
   min-height: 300px;
   display: grid;
-  grid-template-columns: minmax(340px, 1.45fr) minmax(96px, 0.38fr) minmax(260px, 0.94fr) 34px minmax(160px, 0.58fr);
+  grid-template-columns: minmax(270px, 1.15fr) minmax(95px, 0.38fr) minmax(300px, 1.12fr) minmax(80px, 0.32fr) minmax(150px, 0.58fr);
   align-items: center;
   gap: 12px;
 }
@@ -2338,6 +2339,77 @@
   color: #657472;
   font: 8px var(--font-mono);
   line-height: 1.5;
+}
+
+.historyAcademic {
+  width: min(300px, 100%);
+  height: 150px;
+  position: absolute;
+  left: 0;
+  bottom: 8px;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 20px;
+}
+
+.historyAcademic .diagramFrame {
+  width: 70px;
+  flex: 0 0 70px;
+  box-shadow: -8px 9px 16px rgb(0 0 0 / 34%);
+}
+
+.historyAcademic .diagramFrame + .diagramFrame {
+  margin-left: -17px;
+}
+
+.historyAcademic .diagramFrame:nth-child(1) { transform: translateY(16px); }
+.historyAcademic .diagramFrame:nth-child(2) { transform: translateY(12px); }
+.historyAcademic .diagramFrame:nth-child(3) { transform: translateY(8px); }
+.historyAcademic .diagramFrame:nth-child(4) { transform: translateY(4px); }
+
+.historyAcademic .diagramFrame small {
+  top: calc(100% + 8px);
+  font-size: 7px;
+}
+
+.academicConnector {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #71807d;
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.academicConnector > span {
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  line-height: 1.55;
+}
+
+.academicConnector svg {
+  width: 100%;
+  max-width: 130px;
+  overflow: visible;
+}
+
+.academicConnector path {
+  fill: none;
+  stroke: rgb(50 213 173 / 55%);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.academicConnector .connectorArrowhead {
+  fill: var(--mint);
+  stroke: none;
+}
+
+.outputConnector svg {
+  max-width: 90px;
 }
 
 .historyPerspective {
@@ -2446,18 +2518,18 @@
 }
 
 .transformerNode {
-  min-height: 248px;
+  min-height: 270px;
+  padding: 20px;
   align-items: stretch;
   border-color: rgb(50 213 173 / 44%);
-  background:
-    radial-gradient(circle at 50% 50%, rgb(50 213 173 / 9%), transparent 62%),
-    rgb(11 21 24 / 84%);
+  background: rgb(11 21 24 / 84%);
 }
 
 .transformerNode > strong {
-  font-family: var(--font-display);
-  font-size: 24px;
-  letter-spacing: -0.035em;
+  color: #71807d;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.05em;
 }
 
 .transformerNode > em {
@@ -2465,6 +2537,45 @@
   font-size: 7px;
   font-style: normal;
   letter-spacing: 0.07em;
+}
+
+.academicBlockStack {
+  min-height: 144px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.academicBlockStack i {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgb(50 213 173 / 32%);
+  background: rgb(50 213 173 / 3%);
+  color: #71807d;
+  font-family: var(--font-mono);
+  font-style: normal;
+}
+
+.academicBlockStack b {
+  padding: 8px 2px;
+  color: var(--mint);
+  font-size: 8px;
+  font-weight: 400;
+  text-align: center;
+}
+
+.academicBlockStack em {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 7px 2px;
+  border-top: 1px solid rgb(50 213 173 / 18%);
+  color: #879491;
+  font-size: 7px;
+  font-style: normal;
+  line-height: 2.05;
+  text-align: center;
 }
 
 .architecturePrediction {
@@ -2475,6 +2586,10 @@
   justify-content: center;
   gap: 16px;
   font-family: var(--font-mono);
+}
+
+.architecturePrediction .diagramFramePredicted {
+  width: 122px;
 }
 
 .architectureStage,
@@ -2722,7 +2837,7 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 18px;
-  border-top: 1px solid rgb(50 213 173 / 30%);
+  border-top: 1px dashed rgb(50 213 173 / 32%);
   color: #667573;
   font-family: var(--font-mono);
   font-size: 7px;
@@ -2730,13 +2845,7 @@
 }
 
 .feedbackRail::before {
-  content: "";
-  height: 1px;
-  position: absolute;
-  left: 92px;
-  right: 92px;
-  top: -1px;
-  background: linear-gradient(90deg, transparent, var(--mint), transparent);
+  content: none;
 }
 
 .feedbackRail strong {
@@ -3195,6 +3304,7 @@
 
   .architectureInput {
     width: min(430px, 100%);
+    min-height: 260px;
     justify-self: center;
   }
 
@@ -3214,8 +3324,27 @@
     transform: rotate(90deg);
   }
 
+  .historyAcademic {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .academicConnector {
+    min-height: 100px;
+    justify-self: center;
+  }
+
+  .academicConnector svg {
+    width: 86px;
+    transform: rotate(90deg);
+  }
+
+  .outputConnector svg {
+    width: 70px;
+  }
+
   .transformerNode {
-    width: min(420px, 100%);
+    width: min(430px, 100%);
     justify-self: center;
   }
 
@@ -3590,6 +3719,23 @@
 
   .historyRibbon .diagramFrame + .diagramFrame {
     margin-left: -7px;
+  }
+
+  .historyAcademic .diagramFrame {
+    width: 52px;
+    flex-basis: 52px;
+  }
+
+  .historyAcademic .diagramFrame + .diagramFrame {
+    margin-left: -10px;
+  }
+
+  .architectureLabel strong {
+    font-size: 20px;
+  }
+
+  .academicBlockStack {
+    gap: 3px;
   }
 
   .feedbackRail {
