@@ -11,6 +11,34 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Blocket League world-model lab
+
+The independent [Blocket League lab](http://localhost:3000/blocket-league/) is a
+playable two-disc physics world plus an action-conditioned video-diffusion
+research scaffold. Its browser simulator lives at `/blocket-league`; the Python
+simulator, VideoDiT, Modal training entry point, and layerwise probes are in
+[`blocket_league`](./blocket_league).
+
+The lab now ends with a held-out latent interpretability audit for Cartesian
+position, velocity, polar geometry, and imminent collision, including untrained,
+action-only, shuffled-label, and matched-noise causal-edit controls. A
+puck-centered, activation-located downstream-Jacobian intervention now causally writes
+both signed velocity and speed through 12 frozen-model rollout frames, while
+ordinary probe and equal-norm random directions remain near zero.
+
+Run the current strong baseline with the authenticated Modal client:
+
+```bash
+uvx --from modal modal run blocket_league/modal_app.py \
+  --preset tiny --steps 30000 --batch-size 16 \
+  --context-frames 6 --patch-size 4 \
+  --attention-mode factorized --gpu H100 \
+  --probe-samples 2048
+```
+
+See [`blocket_league/README.md`](./blocket_league/README.md) for the clip schema,
+model presets, exported artifacts, and probe command.
+
 ## What the sequence demonstrates
 
 1. An ideal continuous cancellation ring.

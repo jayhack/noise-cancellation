@@ -1,0 +1,955 @@
+{
+  "version": 1,
+  "checkpointStep": 30000,
+  "modelParameters": 5813920,
+  "protocol": {
+    "samples": 768,
+    "trainTrajectories": 460,
+    "validationTrajectories": 153,
+    "testTrajectories": 155,
+    "seed": 710003,
+    "historyFrames": 16,
+    "predictionFrames": 2,
+    "probePoint": "first denoising evaluation at flow time 0",
+    "split": "disjoint deterministic simulator trajectories"
+  },
+  "representations": [
+    {
+      "id": "codec",
+      "label": "Codec latent",
+      "taskScores": {
+        "position": 0.8613,
+        "velocity": 0.2166,
+        "speed": 0.0808,
+        "polar": 0.4865,
+        "collision": 0.6422
+      },
+      "continuousR2": {
+        "player_x": 0.9009,
+        "player_y": 0.8801,
+        "player_vx": 0.2977,
+        "player_vy": 0.2199,
+        "puck_x": 0.8163,
+        "puck_y": 0.8477,
+        "puck_vx": 0.1785,
+        "puck_vy": 0.1702,
+        "player_speed": -0.0242,
+        "puck_speed": 0.1858,
+        "relative_distance": 0.3691,
+        "bearing_cos": 0.6016,
+        "bearing_sin": 0.4889
+      },
+      "classification": {
+        "any_collision": {
+          "auc": 0.6422,
+          "averagePrecision": 0.4834,
+          "prevalence": 0.2774
+        },
+        "disc_impact": {
+          "auc": 0.6844,
+          "averagePrecision": 0.2869,
+          "prevalence": 0.1032
+        },
+        "wall_hit": {
+          "auc": 0.6696,
+          "averagePrecision": 0.4108,
+          "prevalence": 0.1806
+        }
+      },
+      "selectedRidge": 1.0
+    },
+    {
+      "id": "input",
+      "label": "DiT input",
+      "taskScores": {
+        "position": 0.7005,
+        "velocity": 0.1128,
+        "speed": 0.0821,
+        "polar": 0.2215,
+        "collision": 0.6279
+      },
+      "continuousR2": {
+        "player_x": 0.8041,
+        "player_y": 0.8112,
+        "player_vx": 0.1391,
+        "player_vy": 0.0345,
+        "puck_x": 0.5501,
+        "puck_y": 0.6367,
+        "puck_vx": 0.1715,
+        "puck_vy": 0.1061,
+        "player_speed": -0.0687,
+        "puck_speed": 0.2329,
+        "relative_distance": 0.2201,
+        "bearing_cos": 0.2709,
+        "bearing_sin": 0.1736
+      },
+      "classification": {
+        "any_collision": {
+          "auc": 0.6279,
+          "averagePrecision": 0.3792,
+          "prevalence": 0.2774
+        },
+        "disc_impact": {
+          "auc": 0.6421,
+          "averagePrecision": 0.1727,
+          "prevalence": 0.1032
+        },
+        "wall_hit": {
+          "auc": 0.6409,
+          "averagePrecision": 0.3056,
+          "prevalence": 0.1806
+        }
+      },
+      "selectedRidge": 1.0
+    },
+    {
+      "id": "block-1",
+      "label": "Block 1",
+      "taskScores": {
+        "position": 0.8187,
+        "velocity": 0.2713,
+        "speed": 0.0265,
+        "polar": 0.3325,
+        "collision": 0.6935
+      },
+      "continuousR2": {
+        "player_x": 0.8635,
+        "player_y": 0.8568,
+        "player_vx": 0.4793,
+        "player_vy": 0.3031,
+        "puck_x": 0.7773,
+        "puck_y": 0.7772,
+        "puck_vx": 0.2564,
+        "puck_vy": 0.0464,
+        "player_speed": -0.1674,
+        "puck_speed": 0.2203,
+        "relative_distance": 0.1874,
+        "bearing_cos": 0.5034,
+        "bearing_sin": 0.3068
+      },
+      "classification": {
+        "any_collision": {
+          "auc": 0.6935,
+          "averagePrecision": 0.4319,
+          "prevalence": 0.2774
+        },
+        "disc_impact": {
+          "auc": 0.6776,
+          "averagePrecision": 0.1989,
+          "prevalence": 0.1032
+        },
+        "wall_hit": {
+          "auc": 0.723,
+          "averagePrecision": 0.367,
+          "prevalence": 0.1806
+        }
+      },
+      "selectedRidge": 0.1
+    },
+    {
+      "id": "block-2",
+      "label": "Block 2",
+      "taskScores": {
+        "position": 0.9478,
+        "velocity": 0.3036,
+        "speed": 0.2153,
+        "polar": 0.6251,
+        "collision": 0.7762
+      },
+      "continuousR2": {
+        "player_x": 0.9562,
+        "player_y": 0.9516,
+        "player_vx": 0.5717,
+        "player_vy": 0.3336,
+        "puck_x": 0.9487,
+        "puck_y": 0.9349,
+        "puck_vx": 0.2671,
+        "puck_vy": 0.0419,
+        "player_speed": 0.0407,
+        "puck_speed": 0.3899,
+        "relative_distance": 0.4901,
+        "bearing_cos": 0.735,
+        "bearing_sin": 0.6502
+      },
+      "classification": {
+        "any_collision": {
+          "auc": 0.7762,
+          "averagePrecision": 0.5505,
+          "prevalence": 0.2774
+        },
+        "disc_impact": {
+          "auc": 0.7325,
+          "averagePrecision": 0.2828,
+          "prevalence": 0.1032
+        },
+        "wall_hit": {
+          "auc": 0.8346,
+          "averagePrecision": 0.5502,
+          "prevalence": 0.1806
+        }
+      },
+      "selectedRidge": 0.1
+    },
+    {
+      "id": "block-3",
+      "label": "Block 3",
+      "taskScores": {
+        "position": 0.9551,
+        "velocity": 0.3081,
+        "speed": 0.2268,
+        "polar": 0.7189,
+        "collision": 0.7928
+      },
+      "continuousR2": {
+        "player_x": 0.9605,
+        "player_y": 0.9587,
+        "player_vx": 0.5737,
+        "player_vy": 0.3298,
+        "puck_x": 0.9577,
+        "puck_y": 0.9436,
+        "puck_vx": 0.2991,
+        "puck_vy": 0.03,
+        "player_speed": -0.0047,
+        "puck_speed": 0.4582,
+        "relative_distance": 0.6214,
+        "bearing_cos": 0.8055,
+        "bearing_sin": 0.7297
+      },
+      "classification": {
+        "any_collision": {
+          "auc": 0.7928,
+          "averagePrecision": 0.5981,
+          "prevalence": 0.2774
+        },
+        "disc_impact": {
+          "auc": 0.7617,
+          "averagePrecision": 0.3983,
+          "prevalence": 0.1032
+        },
+        "wall_hit": {
+          "auc": 0.858,
+          "averagePrecision": 0.6259,
+          "prevalence": 0.1806
+        }
+      },
+      "selectedRidge": 0.1
+    },
+    {
+      "id": "block-4",
+      "label": "Block 4",
+      "taskScores": {
+        "position": 0.9465,
+        "velocity": 0.2696,
+        "speed": 0.1995,
+        "polar": 0.7085,
+        "collision": 0.8119
+      },
+      "continuousR2": {
+        "player_x": 0.9524,
+        "player_y": 0.9517,
+        "player_vx": 0.5264,
+        "player_vy": 0.2884,
+        "puck_x": 0.9521,
+        "puck_y": 0.9298,
+        "puck_vx": 0.2752,
+        "puck_vy": -0.0114,
+        "player_speed": -0.0279,
+        "puck_speed": 0.4269,
+        "relative_distance": 0.6937,
+        "bearing_cos": 0.769,
+        "bearing_sin": 0.6628
+      },
+      "classification": {
+        "any_collision": {
+          "auc": 0.8119,
+          "averagePrecision": 0.6635,
+          "prevalence": 0.2774
+        },
+        "disc_impact": {
+          "auc": 0.8071,
+          "averagePrecision": 0.4741,
+          "prevalence": 0.1032
+        },
+        "wall_hit": {
+          "auc": 0.869,
+          "averagePrecision": 0.6352,
+          "prevalence": 0.1806
+        }
+      },
+      "selectedRidge": 0.1
+    },
+    {
+      "id": "block-5",
+      "label": "Block 5",
+      "taskScores": {
+        "position": 0.9183,
+        "velocity": 0.2048,
+        "speed": 0.1376,
+        "polar": 0.6383,
+        "collision": 0.811
+      },
+      "continuousR2": {
+        "player_x": 0.9306,
+        "player_y": 0.9277,
+        "player_vx": 0.4457,
+        "player_vy": 0.2114,
+        "puck_x": 0.925,
+        "puck_y": 0.8899,
+        "puck_vx": 0.2104,
+        "puck_vy": -0.0485,
+        "player_speed": -0.1045,
+        "puck_speed": 0.3796,
+        "relative_distance": 0.6519,
+        "bearing_cos": 0.6999,
+        "bearing_sin": 0.5632
+      },
+      "classification": {
+        "any_collision": {
+          "auc": 0.811,
+          "averagePrecision": 0.6568,
+          "prevalence": 0.2774
+        },
+        "disc_impact": {
+          "auc": 0.8197,
+          "averagePrecision": 0.5179,
+          "prevalence": 0.1032
+        },
+        "wall_hit": {
+          "auc": 0.8583,
+          "averagePrecision": 0.6019,
+          "prevalence": 0.1806
+        }
+      },
+      "selectedRidge": 0.1
+    },
+    {
+      "id": "block-6",
+      "label": "Block 6",
+      "taskScores": {
+        "position": 0.8931,
+        "velocity": 0.1649,
+        "speed": 0.1033,
+        "polar": 0.5862,
+        "collision": 0.7938
+      },
+      "continuousR2": {
+        "player_x": 0.9139,
+        "player_y": 0.9124,
+        "player_vx": 0.3991,
+        "player_vy": 0.1529,
+        "puck_x": 0.8962,
+        "puck_y": 0.8499,
+        "puck_vx": 0.1684,
+        "puck_vy": -0.0607,
+        "player_speed": -0.1265,
+        "puck_speed": 0.3331,
+        "relative_distance": 0.6337,
+        "bearing_cos": 0.643,
+        "bearing_sin": 0.4818
+      },
+      "classification": {
+        "any_collision": {
+          "auc": 0.7938,
+          "averagePrecision": 0.6356,
+          "prevalence": 0.2774
+        },
+        "disc_impact": {
+          "auc": 0.799,
+          "averagePrecision": 0.5205,
+          "prevalence": 0.1032
+        },
+        "wall_hit": {
+          "auc": 0.8434,
+          "averagePrecision": 0.5978,
+          "prevalence": 0.1806
+        }
+      },
+      "selectedRidge": 0.1
+    }
+  ],
+  "controls": {
+    "untrained": {
+      "taskScores": {
+        "position": 0.7259,
+        "velocity": 0.1098,
+        "speed": 0.0771,
+        "polar": 0.2386,
+        "collision": 0.6242
+      },
+      "continuousR2": {
+        "player_x": 0.8209,
+        "player_y": 0.8283,
+        "player_vx": 0.14,
+        "player_vy": 0.0326,
+        "puck_x": 0.5768,
+        "puck_y": 0.6778,
+        "puck_vx": 0.1976,
+        "puck_vy": 0.0689,
+        "player_speed": -0.0649,
+        "puck_speed": 0.2191,
+        "relative_distance": 0.2376,
+        "bearing_cos": 0.2757,
+        "bearing_sin": 0.2024
+      },
+      "classification": {
+        "any_collision": {
+          "auc": 0.6242,
+          "averagePrecision": 0.4397,
+          "prevalence": 0.2774
+        },
+        "disc_impact": {
+          "auc": 0.6848,
+          "averagePrecision": 0.2003,
+          "prevalence": 0.1032
+        },
+        "wall_hit": {
+          "auc": 0.6513,
+          "averagePrecision": 0.3419,
+          "prevalence": 0.1806
+        }
+      },
+      "selectedRidge": 1.0
+    },
+    "actionOnly": {
+      "taskScores": {
+        "position": 0.1009,
+        "velocity": 0.219,
+        "speed": 0.0344,
+        "polar": 0.17,
+        "collision": 0.4213
+      },
+      "continuousR2": {
+        "player_x": 0.0098,
+        "player_y": 0.0061,
+        "player_vx": 0.4899,
+        "player_vy": 0.3534,
+        "puck_x": 0.1883,
+        "puck_y": 0.1995,
+        "puck_vx": 0.0229,
+        "puck_vy": 0.0096,
+        "player_speed": 0.0643,
+        "puck_speed": 0.0046,
+        "relative_distance": -0.0131,
+        "bearing_cos": 0.3427,
+        "bearing_sin": 0.1804
+      },
+      "classification": {
+        "any_collision": {
+          "auc": 0.4213,
+          "averagePrecision": 0.2562,
+          "prevalence": 0.2774
+        },
+        "disc_impact": {
+          "auc": 0.5004,
+          "averagePrecision": 0.1842,
+          "prevalence": 0.1032
+        },
+        "wall_hit": {
+          "auc": 0.3839,
+          "averagePrecision": 0.1524,
+          "prevalence": 0.1806
+        }
+      },
+      "selectedRidge": 10.0
+    },
+    "shuffledLabels": {
+      "taskScores": {
+        "position": -0.0131,
+        "velocity": -0.0195,
+        "speed": -0.0431,
+        "polar": -0.0047,
+        "collision": 0.4649
+      },
+      "continuousR2": {
+        "player_x": -0.0351,
+        "player_y": -0.0044,
+        "player_vx": -0.0191,
+        "player_vy": -0.014,
+        "puck_x": -0.0009,
+        "puck_y": -0.012,
+        "puck_vx": -0.0203,
+        "puck_vy": -0.0246,
+        "player_speed": -0.0381,
+        "puck_speed": -0.048,
+        "relative_distance": -0.0267,
+        "bearing_cos": -0.0027,
+        "bearing_sin": 0.0154
+      },
+      "classification": {
+        "any_collision": {
+          "auc": 0.4649,
+          "averagePrecision": 0.2956,
+          "prevalence": 0.2645
+        },
+        "disc_impact": {
+          "auc": 0.4767,
+          "averagePrecision": 0.0934,
+          "prevalence": 0.0774
+        },
+        "wall_hit": {
+          "auc": 0.4477,
+          "averagePrecision": 0.2322,
+          "prevalence": 0.2065
+        }
+      },
+      "selectedRidge": 10.0
+    }
+  },
+  "bestLayers": {
+    "velocity": "block-3",
+    "collision": "block-4"
+  },
+  "intervention": {
+    "layer": "block-3",
+    "samples": 256,
+    "probeStandardDeviations": 1.0,
+    "integrationSteps": 6,
+    "targets": {
+      "player_vx": {
+        "plusMinusDisplacementPx": 0.0023,
+        "medianDisplacementPx": 0.0,
+        "expectedSignRate": 0.082,
+        "directionL2": 4.0841
+      },
+      "player_vy": {
+        "plusMinusDisplacementPx": 0.0001,
+        "medianDisplacementPx": 0.0,
+        "expectedSignRate": 0.0625,
+        "directionL2": 3.8635
+      },
+      "puck_vx": {
+        "plusMinusDisplacementPx": 0.0049,
+        "medianDisplacementPx": 0.0,
+        "expectedSignRate": 0.0781,
+        "directionL2": 3.683
+      },
+      "puck_vy": {
+        "plusMinusDisplacementPx": -0.0012,
+        "medianDisplacementPx": 0.0,
+        "expectedSignRate": 0.0547,
+        "directionL2": 3.697
+      }
+    }
+  },
+  "downstreamIntervention": {
+    "lens": {
+      "contexts": 48,
+      "sourceLayer": "block-3",
+      "downstreamTarget": "decoded puck x displacement in the next two frames",
+      "averagedOver": "contexts, spatial tokens, and every flow-solver evaluation",
+      "spatialAlignment": "gradients translated so the puck token is centered before averaging",
+      "solverEvaluationsPerContext": 6,
+      "gradientL2": 0.016,
+      "projectionSigma": 1.349
+    },
+    "speedLens": {
+      "contexts": 48,
+      "sourceLayer": "block-3",
+      "downstreamTarget": "decoded puck speed in the next two frames",
+      "averagedOver": "contexts, spatial tokens, and every flow-solver evaluation",
+      "spatialAlignment": "gradients translated so the puck token is centered before averaging",
+      "solverEvaluationsPerContext": 6,
+      "gradientL2": 0.0087,
+      "projectionSigma": 1.4829
+    },
+    "activationLocator": {
+      "trainingSignal": "puck-colored pixels in observed RGB only; no simulator coordinates",
+      "deploymentSignal": "block activations only",
+      "layer": "block-3",
+      "samples": 256,
+      "trainTrajectories": 153,
+      "validationTrajectories": 51,
+      "testTrajectories": 52,
+      "visualCellAccuracy": 0.8846,
+      "simulatorCellAccuracyEvaluationOnly": 0.6731,
+      "withinOneCellAccuracy": 1.0,
+      "rolloutCellAgreementWithDecodedPosition": 0.6608,
+      "usedForCausalWrite": true
+    },
+    "write": {
+      "layer": "block-3",
+      "rolloutFrames": 12,
+      "samples": 256,
+      "strengthProjectionSigmas": 2.0,
+      "persistence": "every denoising evaluation of every autoregressive two-frame step",
+      "matchedNoise": true,
+      "probeJacobianCosine": -0.0137,
+      "velocitySpeedLensCosine": 0.1387
+    },
+    "effects": {
+      "downstreamJacobian": {
+        "meanVxDeltaPxPerFrame": 0.8084,
+        "meanSpeedDeltaPxPerFrame": 0.0455,
+        "finalXDeltaPx": 9.7012,
+        "expectedSignRate": 0.8516
+      },
+      "coordinateOracleCeiling": {
+        "meanVxDeltaPxPerFrame": 0.7359,
+        "meanSpeedDeltaPxPerFrame": -0.0174,
+        "finalXDeltaPx": 8.8305,
+        "expectedSignRate": 0.8398
+      },
+      "linearProbe": {
+        "meanVxDeltaPxPerFrame": 0.016,
+        "meanSpeedDeltaPxPerFrame": 0.0022,
+        "finalXDeltaPx": 0.1918,
+        "expectedSignRate": 0.5195
+      },
+      "randomDirection": {
+        "meanVxDeltaPxPerFrame": -0.007,
+        "meanSpeedDeltaPxPerFrame": 0.0121,
+        "finalXDeltaPx": -0.0845,
+        "expectedSignRate": 0.4141
+      },
+      "downstreamSpeed": {
+        "meanSpeedDeltaPxPerFrame": 0.0986,
+        "plusVsBaselinePxPerFrame": 0.3088,
+        "expectedSignRate": 0.543
+      },
+      "randomSpeedDirection": {
+        "meanSpeedDeltaPxPerFrame": -0.0116,
+        "plusVsBaselinePxPerFrame": -0.0076,
+        "expectedSignRate": 0.4883
+      }
+    },
+    "curves": {
+      "baseline": {
+        "vx": [
+          -0.0588,
+          0.0249,
+          0.0124,
+          -0.2563,
+          -0.4131,
+          0.0433,
+          -0.0815,
+          -0.0646,
+          0.0521,
+          0.2239,
+          0.1892,
+          -0.2395
+        ],
+        "speed": [
+          2.0451,
+          1.9042,
+          1.9778,
+          2.2968,
+          2.5655,
+          1.9721,
+          1.9668,
+          2.0934,
+          1.9378,
+          1.8189,
+          1.7974,
+          2.1323
+        ]
+      },
+      "jacobianPlus": {
+        "vx": [
+          -0.4157,
+          0.7272,
+          0.1474,
+          0.732,
+          -0.1784,
+          0.9682,
+          0.0287,
+          0.8187,
+          0.0939,
+          0.735,
+          0.2673,
+          0.1936
+        ],
+        "speed": [
+          2.2801,
+          2.0555,
+          2.2226,
+          2.709,
+          2.8232,
+          2.4562,
+          2.279,
+          2.4778,
+          2.1975,
+          2.4757,
+          2.0493,
+          2.6739
+        ]
+      },
+      "jacobianMinus": {
+        "vx": [
+          0.3575,
+          -0.8287,
+          -0.2724,
+          -1.4745,
+          -0.4707,
+          -1.0879,
+          -0.3369,
+          -0.6428,
+          0.0772,
+          -0.5401,
+          0.1151,
+          -0.4789
+        ],
+        "speed": [
+          2.1489,
+          2.13,
+          2.0714,
+          2.8199,
+          2.6471,
+          2.5512,
+          2.3048,
+          2.5156,
+          2.2649,
+          2.2959,
+          2.1624,
+          2.2422
+        ]
+      },
+      "probePlus": {
+        "vx": [
+          -0.0487,
+          0.0256,
+          0.0124,
+          -0.2487,
+          -0.3973,
+          0.0503,
+          -0.0612,
+          -0.0643,
+          0.0763,
+          0.2182,
+          0.2037,
+          -0.2341
+        ],
+        "speed": [
+          2.0409,
+          1.9084,
+          1.9722,
+          2.2886,
+          2.5561,
+          1.9925,
+          1.9703,
+          2.0861,
+          1.9418,
+          1.8239,
+          1.847,
+          2.1426
+        ]
+      },
+      "probeMinus": {
+        "vx": [
+          -0.0675,
+          0.0234,
+          0.01,
+          -0.2649,
+          -0.433,
+          0.0555,
+          -0.102,
+          -0.0801,
+          0.0226,
+          0.2246,
+          0.1641,
+          -0.2123
+        ],
+        "speed": [
+          2.0524,
+          1.8969,
+          1.9951,
+          2.294,
+          2.5704,
+          1.9964,
+          1.952,
+          2.1059,
+          1.9378,
+          1.8082,
+          1.7979,
+          2.1373
+        ]
+      },
+      "randomPlus": {
+        "vx": [
+          -0.0677,
+          0.0205,
+          -0.0048,
+          -0.2545,
+          -0.4167,
+          0.0487,
+          -0.1033,
+          -0.0754,
+          0.019,
+          0.2124,
+          0.1994,
+          -0.227
+        ],
+        "speed": [
+          2.0463,
+          1.9087,
+          1.979,
+          2.3067,
+          2.5624,
+          1.9988,
+          1.968,
+          2.0931,
+          1.9409,
+          1.8518,
+          1.8178,
+          2.1452
+        ]
+      },
+      "randomMinus": {
+        "vx": [
+          -0.0467,
+          0.0284,
+          0.0274,
+          -0.2593,
+          -0.4077,
+          0.0451,
+          -0.0793,
+          -0.0728,
+          0.0529,
+          0.2568,
+          0.1934,
+          -0.3031
+        ],
+        "speed": [
+          2.0499,
+          1.8936,
+          1.9743,
+          2.2884,
+          2.5612,
+          1.9686,
+          1.9559,
+          2.0883,
+          1.9302,
+          1.8212,
+          1.8032,
+          2.1388
+        ]
+      },
+      "speedPlus": {
+        "vx": [
+          -0.0624,
+          0.3103,
+          0.1781,
+          0.2296,
+          -0.6712,
+          0.0844,
+          0.0254,
+          -0.003,
+          0.1253,
+          0.1165,
+          -0.027,
+          -0.3657
+        ],
+        "speed": [
+          1.9997,
+          2.2381,
+          2.208,
+          2.3844,
+          2.8194,
+          2.4729,
+          2.1911,
+          2.4561,
+          2.0478,
+          2.2449,
+          2.2953,
+          2.856
+        ]
+      },
+      "speedMinus": {
+        "vx": [
+          -0.0489,
+          -0.1615,
+          -0.0734,
+          -0.3825,
+          -0.4962,
+          -0.1551,
+          -0.0548,
+          -0.2354,
+          0.1045,
+          0.0842,
+          0.2663,
+          -0.3481
+        ],
+        "speed": [
+          2.2143,
+          2.2056,
+          1.994,
+          2.5794,
+          2.6114,
+          2.2784,
+          2.2654,
+          2.3879,
+          2.0525,
+          2.0284,
+          1.9392,
+          2.4741
+        ]
+      },
+      "speedRandomPlus": {
+        "vx": [
+          -0.0472,
+          0.0249,
+          0.0249,
+          -0.2372,
+          -0.4036,
+          0.0657,
+          -0.0691,
+          -0.0639,
+          0.0429,
+          0.2676,
+          0.2459,
+          -0.2125
+        ],
+        "speed": [
+          2.0494,
+          1.9084,
+          1.9854,
+          2.292,
+          2.563,
+          1.9717,
+          1.9559,
+          2.1005,
+          1.895,
+          1.8324,
+          1.7564,
+          2.1069
+        ]
+      },
+      "speedRandomMinus": {
+        "vx": [
+          -0.0627,
+          0.0105,
+          0.0066,
+          -0.2762,
+          -0.4246,
+          0.0251,
+          -0.0926,
+          -0.0905,
+          0.0599,
+          0.156,
+          0.1639,
+          -0.2905
+        ],
+        "speed": [
+          2.0457,
+          1.9002,
+          1.9737,
+          2.2961,
+          2.5739,
+          1.9824,
+          1.9601,
+          2.1072,
+          1.9434,
+          1.8561,
+          1.7896,
+          2.1277
+        ]
+      }
+    }
+  },
+  "targetDefinitions": {
+    "position": "End-of-next-pair player and puck x/y",
+    "velocity": "End-of-next-pair player and puck vx/vy",
+    "speed": "End-of-next-pair player and puck speed",
+    "polar": "Player-to-puck distance and sin/cos bearing",
+    "collision": "Disc impact or wall contact anywhere in the next two frames"
+  }
+}

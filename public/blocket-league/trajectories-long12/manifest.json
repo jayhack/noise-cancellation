@@ -1,0 +1,245 @@
+{
+  "version": 2,
+  "frameSize": 64,
+  "contextFrames": 6,
+  "futureFrames": 12,
+  "modelFutureFrames": 12,
+  "rolloutBoundaries": [],
+  "sourceFps": 20,
+  "playbackFps": 6,
+  "ddimSteps": 8,
+  "checkpointStep": 30000,
+  "scenarios": [
+    {
+      "id": "open-ice",
+      "title": "Open ice",
+      "description": "A clean acceleration arc with changing actions.",
+      "seed": 2000007,
+      "atlas": "/blocket-league/trajectories-long12/open-ice.png",
+      "actions": [
+        "right",
+        "left",
+        "left",
+        "left",
+        "up-left",
+        "up-left",
+        "up-left",
+        "up-left",
+        "up-left",
+        "up-left",
+        "up-left",
+        "up-left"
+      ],
+      "events": [
+        "thrust",
+        "thrust",
+        "thrust",
+        "thrust",
+        "thrust",
+        "thrust",
+        "thrust",
+        "thrust",
+        "thrust",
+        "thrust",
+        "thrust",
+        "thrust"
+      ],
+      "lanes": [
+        {
+          "id": "truth",
+          "label": "Ground truth",
+          "kind": "truth",
+          "playerErrorPx": 0.0,
+          "puckErrorPx": 0.0
+        },
+        {
+          "id": "sample-1",
+          "label": "Hallucination A",
+          "kind": "sample",
+          "playerErrorPx": 2.0,
+          "puckErrorPx": 0.77,
+          "directPlayerErrorPx": 2.0,
+          "directPuckErrorPx": 0.77,
+          "rolledPlayerErrorPx": 2.0,
+          "rolledPuckErrorPx": 0.77
+        },
+        {
+          "id": "sample-2",
+          "label": "Hallucination B",
+          "kind": "sample",
+          "playerErrorPx": 1.55,
+          "puckErrorPx": 0.28,
+          "directPlayerErrorPx": 1.55,
+          "directPuckErrorPx": 0.28,
+          "rolledPlayerErrorPx": 1.55,
+          "rolledPuckErrorPx": 0.28
+        },
+        {
+          "id": "sample-3",
+          "label": "Hallucination C",
+          "kind": "sample",
+          "playerErrorPx": 2.54,
+          "puckErrorPx": 0.6,
+          "directPlayerErrorPx": 2.54,
+          "directPuckErrorPx": 0.6,
+          "rolledPlayerErrorPx": 2.54,
+          "rolledPuckErrorPx": 0.6
+        }
+      ]
+    },
+    {
+      "id": "bank-shot",
+      "title": "Bank shot",
+      "description": "The puck meets the wall, then the player.",
+      "seed": 2009980,
+      "atlas": "/blocket-league/trajectories-long12/bank-shot.png",
+      "actions": [
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "down-left",
+        "down-left",
+        "left"
+      ],
+      "events": [
+        "thrust",
+        "thrust",
+        "thrust",
+        "wall",
+        "wall",
+        "wall",
+        "thrust",
+        "impact",
+        "wall",
+        "thrust",
+        "thrust",
+        "thrust"
+      ],
+      "lanes": [
+        {
+          "id": "truth",
+          "label": "Ground truth",
+          "kind": "truth",
+          "playerErrorPx": 0.0,
+          "puckErrorPx": 0.0
+        },
+        {
+          "id": "sample-1",
+          "label": "Hallucination A",
+          "kind": "sample",
+          "playerErrorPx": 1.31,
+          "puckErrorPx": 3.01,
+          "directPlayerErrorPx": 1.31,
+          "directPuckErrorPx": 3.01,
+          "rolledPlayerErrorPx": 1.31,
+          "rolledPuckErrorPx": 3.01
+        },
+        {
+          "id": "sample-2",
+          "label": "Hallucination B",
+          "kind": "sample",
+          "playerErrorPx": 1.76,
+          "puckErrorPx": 3.05,
+          "directPlayerErrorPx": 1.76,
+          "directPuckErrorPx": 3.05,
+          "rolledPlayerErrorPx": 1.76,
+          "rolledPuckErrorPx": 3.05
+        },
+        {
+          "id": "sample-3",
+          "label": "Hallucination C",
+          "kind": "sample",
+          "playerErrorPx": 2.12,
+          "puckErrorPx": 3.24,
+          "directPlayerErrorPx": 2.12,
+          "directPuckErrorPx": 3.24,
+          "rolledPlayerErrorPx": 2.12,
+          "rolledPuckErrorPx": 3.24
+        }
+      ]
+    },
+    {
+      "id": "goal-reset",
+      "title": "Goal + reset",
+      "description": "A scored goal crosses an abrupt state reset.",
+      "seed": 2129656,
+      "atlas": "/blocket-league/trajectories-long12/goal-reset.png",
+      "actions": [
+        "coast",
+        "coast",
+        "coast",
+        "coast",
+        "coast",
+        "coast",
+        "coast",
+        "coast",
+        "coast",
+        "down-right",
+        "down-right",
+        "down-right"
+      ],
+      "events": [
+        "goal",
+        "goal",
+        "goal",
+        "goal",
+        "kickoff",
+        "coast",
+        "coast",
+        "coast",
+        "coast",
+        "thrust",
+        "thrust",
+        "thrust"
+      ],
+      "lanes": [
+        {
+          "id": "truth",
+          "label": "Ground truth",
+          "kind": "truth",
+          "playerErrorPx": 0.0,
+          "puckErrorPx": 0.0
+        },
+        {
+          "id": "sample-1",
+          "label": "Hallucination A",
+          "kind": "sample",
+          "playerErrorPx": 1.29,
+          "puckErrorPx": 1.66,
+          "directPlayerErrorPx": 1.29,
+          "directPuckErrorPx": 1.66,
+          "rolledPlayerErrorPx": 1.29,
+          "rolledPuckErrorPx": 1.66
+        },
+        {
+          "id": "sample-2",
+          "label": "Hallucination B",
+          "kind": "sample",
+          "playerErrorPx": 7.09,
+          "puckErrorPx": 1.92,
+          "directPlayerErrorPx": 7.09,
+          "directPuckErrorPx": 1.92,
+          "rolledPlayerErrorPx": 7.09,
+          "rolledPuckErrorPx": 1.92
+        },
+        {
+          "id": "sample-3",
+          "label": "Hallucination C",
+          "kind": "sample",
+          "playerErrorPx": 3.92,
+          "puckErrorPx": 2.42,
+          "directPlayerErrorPx": 3.92,
+          "directPuckErrorPx": 2.42,
+          "rolledPlayerErrorPx": 3.92,
+          "rolledPuckErrorPx": 2.42
+        }
+      ]
+    }
+  ]
+}
